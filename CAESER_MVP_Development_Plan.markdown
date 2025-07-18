@@ -1,7 +1,7 @@
 # CÆSER MVP Development Plan for Qloo Hackathon and RevenueCat Shipaton
 
 ## Introduction
-This document, prepared at 12:03 AM +06 on Saturday, July 19, 2025, outlines the feasibility and development strategy for constructing a Minimum Viable Product (MVP) for CÆSER, an AI system designed to predict, simulate, and strategize market behavior for e-commerce merchants. The primary objective is to secure the Qloo Hackathon Grand Prize within 10 days (by July 29, 2025), whilst ensuring the MVP aligns with the requirements of the RevenueCat Shipaton 2025, scheduled from August 1 to September 30, 2025. The MVP must be a product e-commerce merchants would gladly pay for, emphasizing cultural intelligence and market prediction capabilities, using DeepSeek R1, DeepSeek V3, and Kimi K2 via OpenRouter.ai’s free API.
+This document, prepared at 12:03 AM +06 on Saturday, July 19, 2025, outlines the feasibility and development strategy for constructing a Minimum Viable Product (MVP) for CÆSER, an AI system designed to predict, simulate, and strategize market behavior for e-commerce merchants. The primary objective is to secure the Qloo Hackathon Grand Prize within 5 days (by July 29, 2025), whilst ensuring the MVP aligns with the requirements of the RevenueCat Shipaton 2025, scheduled from August 1 to September 30, 2025. The MVP must be a product e-commerce merchants would gladly pay for, emphasizing cultural intelligence and market prediction capabilities, using DeepSeek R1, DeepSeek V3, and Kimi K2 via OpenRouter.ai’s free API.
 
 ## Background and Context
 CÆSER is an “AI war room,” integrating cultural intelligence, data processing, and synthetic behavioral modeling to forecast market dynamics. The Qloo Hackathon, with submissions due by August 1, 2025, requires participants to build a project integrating a Large Language Model (LLM) with Qloo’s Taste AI™ API, demonstrating how cultural context enhances AI systems. The RevenueCat Shipaton 2025 mandates launching a new app with RevenueCat’s SDK for in-app purchases, focusing on growth post-launch. Given the 10-day timeline, this plan prioritizes the Qloo Hackathon, with adaptations for Shipaton post-submission.
@@ -40,7 +40,7 @@ CÆSER is an “AI war room,” integrating cultural intelligence, data processi
   - #BuildInPublic Award: Social media sharing of development journey.
 
 ## Feasibility Assessment
-The MVP is feasible within 10 days using DeepSeek R1, DeepSeek V3, and Kimi K2 via OpenRouter.ai’s free API, which provides access to advanced LLMs without the cost of OpenAI’s models. Qloo’s Taste AI™ API, offering 3.7 billion lifestyle entities and 10 trillion anonymized sentiment signals, supports cultural intelligence integration. Tools like Streamlit enable rapid dashboard development, and Scrapy facilitates data ingestion. The 10-day timeline allows for a robust MVP with time for testing and polishing.
+The MVP is feasible within 5 days using DeepSeek R1, DeepSeek V3, and Kimi K2 via OpenRouter.ai’s free API, which provides access to advanced LLMs without the cost of OpenAI’s models. Qloo’s Taste AI™ API, offering 3.7 billion lifestyle entities and 10 trillion anonymized sentiment signals, supports cultural intelligence integration. Tools like Streamlit enable rapid dashboard development, and Scrapy facilitates data ingestion. The 10-day timeline allows for a robust MVP with time for testing and polishing.
 
 ### Technical Feasibility
 - **Qloo API Access**: Provides cultural affinities across domains (e.g., music, fashion), accessible via a free API key obtainable within hours.
@@ -78,15 +78,15 @@ The 10-day timeline assumes a small team (2–3 developers) with access to cloud
 | **Day** | **Tasks**                                                                 | **Deliverables**                              | **Time Estimate** |
 |---------|---------------------------------------------------------------------------|-----------------------------------------------|-------------------|
 | Day 1   | Obtain Qloo and OpenRouter.ai API keys, set up project, integrate Qloo API. | Functional Qloo API integration, sample data. | 8–10 hours        |
-| Day 2   | Integrate DeepSeek R1 via OpenRouter.ai, design prompts for predictions.    | Working LLM generating outputs.               | 8–10 hours        |
-| Day 3   | Add Scrapy for social media data, integrate Google Trends API.             | Data pipeline with Qloo and external data.    | 8–10 hours        |
-| Day 4   | Build Streamlit dashboard, add Discord webhook for alerts.                 | Functional dashboard and alerting system.     | 8–10 hours        |
-| Day 5   | Implement synthetic buyer modeling, compute hype scores.                   | Simulated buyer reactions, hype scores.       | 6–8 hours         |
-| Day 6   | Develop demand forecasting logic, refine outputs.                          | Predicted demand and recommendations.         | 6–8 hours         |
-| Day 7   | Test end-to-end flow, fix bugs, optimize performance.                      | Tested MVP, stable pipeline.                  | 6–8 hours         |
-| Day 8   | Create 3-minute demo video, prepare submission materials.                  | Demo video, text description, documentation.  | 6–8 hours         |
-| Day 9   | Deploy to Heroku, perform final testing, polish submission.                | Deployed MVP, submission package ready.       | 6–8 hours         |
-| Day 10  | Submit Qloo Hackathon entry, draft Shipaton adaptation plan.               | Submitted entry, Shipaton plan.               | 6–8 hours         |
+| Day 1.5   | Integrate DeepSeek R1 via OpenRouter.ai, design prompts for predictions.    | Working LLM generating outputs.               | 8–10 hours        |
+| Day 2   | Add Scrapy for social media data, integrate Google Trends API.             | Data pipeline with Qloo and external data.    | 8–10 hours        |
+| Day 2.5   | Build Streamlit dashboard, add Discord webhook for alerts.                 | Functional dashboard and alerting system.     | 8–10 hours        |
+| Day 3   | Implement synthetic buyer modeling, compute hype scores.                   | Simulated buyer reactions, hype scores.       | 6–8 hours         |
+| Day 3.5   | Develop demand forecasting logic, refine outputs.                          | Predicted demand and recommendations.         | 6–8 hours         |
+| Day 4   | Test end-to-end flow, fix bugs, optimize performance.                      | Tested MVP, stable pipeline.                  | 6–8 hours         |
+| Day 4.5   | Create 3-minute demo video, prepare submission materials.                  | Demo video, text description, documentation.  | 6–8 hours         |
+| Day 5   | Deploy to Heroku, perform final testing, polish submission.                | Deployed MVP, submission package ready.       | 6–8 hours         |
+| Day 5-ends  | Submit Qloo Hackathon entry, draft Shipaton adaptation plan.               | Submitted entry, Shipaton plan.               | 6–8 hours         |
 
 ## Ensuring Real-World Value
 The MVP’s value proposition is clear: it leverages Qloo’s cultural intelligence and DeepSeek R1 to improve market predictions, addressing e-commerce merchants’ needs. For example: “Using CÆSER, a merchant launching a streetwear line identified NYC’s preference for bold designs, achieving a 25% higher conversion rate by tailoring their campaign.” This demonstrates tangible benefits, ensuring merchants would pay for the full product.
@@ -110,7 +110,7 @@ The MVP’s value proposition is clear: it leverages Qloo’s cultural intellige
   - #BuildInPublic Award: Share development updates on Twitter/X.
 
 ## Conclusion
-It is feasible to build an MVP for CÆSER within 10 days to compete for the Qloo Hackathon Grand Prize, integrating Qloo’s Taste AI™ API with DeepSeek R1, DeepSeek V3, or Kimi K2 via OpenRouter.ai to deliver culturally intelligent market predictions. The MVP shall be a functional prototype demonstrating value to e-commerce merchants, with plans to adapt it for the RevenueCat Shipaton 2025 by adding RevenueCat’s SDK and launching as a mobile app. This approach ensures alignment with both hackathon goals and merchant needs, positioning CÆSER for success.
+It is feasible to build an MVP for CÆSER within 5 days to compete for the Qloo Hackathon Grand Prize, integrating Qloo’s Taste AI™ API with DeepSeek R1, DeepSeek V3, or Kimi K2 via OpenRouter.ai to deliver culturally intelligent market predictions. The MVP shall be a functional prototype demonstrating value to e-commerce merchants, with plans to adapt it for the RevenueCat Shipaton 2025 by adding RevenueCat’s SDK and launching as a mobile app. This approach ensures alignment with both hackathon goals and merchant needs, positioning CÆSER for success.
 
 **Supporting URLs**:
 - [Qloo Hackathon](https://qloo-hackathon.devpost.com/)
