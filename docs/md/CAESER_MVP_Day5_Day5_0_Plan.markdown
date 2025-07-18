@@ -18,11 +18,11 @@ This document provides a detailed, actionable plan for **DAY 5** and **DAY 5-END
      ```  
    - Commit changes to Git and deploy to Heroku:  
      ```
-     heroku create aether-mvp
+     heroku create CAESER-mvp
      git push heroku main
      ```  
    - Configure environment variables (e.g., Qloo API key, DEEPSEEK R1, DEEPSEEK V3 & KIMI K2 WHICHEVER IS APPROPRIATE FOR SPECIFIC USES credentials) in Heroku’s dashboard.  
-   - Verify the app is live by accessing the provided URL (e.g., `https://aether-mvp.herokuapp.com`).  
+   - Verify the app is live by accessing the provided URL (e.g., `https://CAESER-mvp.herokuapp.com`).  
    - **Deliverable**: A publicly accessible MVP deployment.
 
 2. **Conduct Comprehensive Testing (3 hours)**  
@@ -88,7 +88,7 @@ This document provides a detailed, actionable plan for **DAY 5** and **DAY 5-END
 
 1. **Review Submission Requirements (1 hour)**  
    - Gather all required materials:  
-     - Public demo app URL (e.g., `https://aether-mvp.herokuapp.com`).  
+     - Public demo app URL (e.g., `https://CAESER-mvp.herokuapp.com`).  
      - Public GitHub repository link.  
      - Demo video URL (YouTube/Vimeo).  
      - Project description.  

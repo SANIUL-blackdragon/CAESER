@@ -25,7 +25,7 @@ This document outlines a detailed, actionable plan for the first two days of the
    - **Mitigation**: If access is limited, focus on DEEPSEEK R1, DEEPSEEK V3 & KIMI K2 WHICHEVER IS APPROPRIATE FOR SPECIFIC USES and adjust plans if needed.
 
 3. **Set Up Project Structure (2 hours)**  
-   - Create a public GitHub repository named `aether-mvp`.  
+   - Create a public GitHub repository named `CAESER-mvp`.  
    - Initialize it with a `README.md` and a Python-specific `.gitignore`.  
    - Set up a virtual environment: `python -m venv venv` and activate it.  
    - Install dependencies: `pip install fastapi uvicorn streamlit requests scrapy langchain python-dotenv`.  
@@ -72,11 +72,11 @@ This document outlines a detailed, actionable plan for the first two days of the
    - **Challenge**: Complex data structure. **Mitigation**: Use Postman to explore responses.
 
 6. **Set Up Database with SQLite (1 hour)**  
-   - Initialize SQLite in `/data/aether.db` with tables:  
+   - Initialize SQLite in `/data/CAESER.db` with tables:  
      ```python
      import sqlite3
 
-     conn = sqlite3.connect("data/aether.db")
+     conn = sqlite3.connect("data/CAESER.db")
      c = conn.cursor()
      c.execute('''CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY, name TEXT, category TEXT)''')
      c.execute('''CREATE TABLE IF NOT EXISTS insights (id INTEGER PRIMARY KEY, product_id INTEGER, data TEXT)''')
