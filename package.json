@@ -1,0 +1,16 @@
+{
+  "name": "caeser",
+  "version": "1.0.0",
+  "description": "CÆSER is an AI system designed to predict, simulate, and strategize market behavior for e-commerce merchants through cultural intelligence and predictive analytics. The system integrates Qloo's Taste AI™ API for cultural insights and DeepSeek/Kimi models via OpenRouter.ai for predictive analytics.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

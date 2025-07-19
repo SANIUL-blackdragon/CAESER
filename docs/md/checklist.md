@@ -8,16 +8,16 @@ Esteemed user, this checklist delineates the 5-day development plan for CÆSER (
 ---
 
 ## Project Structure Guidelines
-- [ ] Implement recommended directory structure:
-  - [ ] `/api` - Backend and API code
-  - [ ] `/frontend` - Streamlit dashboard
-  - [ ] `/data` - Data processing and storage
-  - [ ] `/tests` - Unit and integration tests
-  - [ ] `/docs` - Project documentation
-- [ ] Ensure proper separation of concerns between modules
-- [ ] Document module organization and dependencies
-- [ ] Standardize naming conventions across the project
-- [ ] Create `README.md` in each directory explaining its purpose
+- [X] Implement recommended directory structure:
+  - [X] `/api` - Backend and API code
+  - [X] `/frontend` - Streamlit dashboard
+  - [X] `/data` - Data processing and storage
+  - [X] `/tests` - Unit and integration tests
+  - [X] `/docs` - Project documentation
+- [X] Ensure proper separation of concerns between modules
+- [X] Document module organization and dependencies
+- [X] Standardize naming conventions across the project
+- [X] Create `README.md` in each directory explaining its purpose
 
 ---
 
@@ -25,7 +25,7 @@ Esteemed user, this checklist delineates the 5-day development plan for CÆSER (
 
 ### Day 1: Setup and API Integration
 - [ ] Obtain Qloo API key (initiate request immediately to avoid delays)
-- [ ] Obtain OpenRouter.ai API key for DeepSeek R1, V3, or Kimi K2 access
+- [ ] Obtain OpenRouter.ai API key for DeepSeek R1, V3, or Kimi K2 access and put them in environment file in root.
 - [ ] Set up project structure with `/api`, `/frontend`, `/data`, `/tests`, `/docs`
 - [ ] Integrate Qloo API to fetch cultural insights (e.g., sneaker affinities in NYC); use mock data if key acquisition is delayed
 - [ ] Initialize SQLite database for storing insights
