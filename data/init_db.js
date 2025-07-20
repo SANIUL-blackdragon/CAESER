@@ -15,13 +15,7 @@ fs.writeFileSync(dbPath, '');
 
 // Execute SQL commands to create tables
 const commands = [
-  `"${sqlitePath}" "${dbPath}" "CREATE TABLE cultural_insights (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    location TEXT NOT NULL,
-    category TEXT NOT NULL,
-    data TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )"`
+  `"${sqlitePath}" "${dbPath}" "CREATE TABLE cultural_insights (id INTEGER PRIMARY KEY AUTOINCREMENT, location TEXT NOT NULL, category TEXT NOT NULL, data TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"`
 ];
 
 exec(commands.join(' && '), (error, stdout, stderr) => {

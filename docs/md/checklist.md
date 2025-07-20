@@ -24,11 +24,11 @@ Esteemed user, this checklist delineates the 5-day development plan for CÆSER (
 ## Daily Milestones
 
 ### Day 1: Setup and API Integration
-- [ ] Obtain Qloo API key (initiate request immediately to avoid delays)
-- [ ] Obtain OpenRouter.ai API key for DeepSeek R1, V3, or Kimi K2 access and put them in environment file in root.
-- [ ] Set up project structure with `/api`, `/frontend`, `/data`, `/tests`, `/docs`
-- [ ] Integrate Qloo API to fetch cultural insights (e.g., sneaker affinities in NYC); use mock data if key acquisition is delayed
-- [ ] Initialize SQLite database for storing insights
+- [ ] Obtain Qloo API key (initiate request immediately to avoid delays) - WILL BE PROVIDED LATER
+- [ ] Obtain OpenRouter.ai API key for DeepSeek R1, V3, or Kimi K2 access and put them in environment file in root. - WILL BE PROVIDED LATER
+- [X] Set up project structure with `/api`, `/frontend`, `/data`, `/tests`, `/docs`
+- [X] Integrate Qloo API to fetch cultural insights (e.g., sneaker affinities in NYC); use mock data if key acquisition is delayed
+- [X] Initialize SQLite database for storing insights
 - [ ] Commit initial setup to public GitHub repository
 
 ### Day 2: LLM Integration and Prompt Design
