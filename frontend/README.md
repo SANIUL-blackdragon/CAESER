@@ -35,3 +35,16 @@ class MarketSelector:
         
     def render(self):
         return st.selectbox("Select Market", self.markets)
+
+## Main Components
+1. `MarketSelector`: Dropdowns for selecting location (e.g., "New York, NY") and category (e.g., "sneakers").
+2. `InsightVisualizer`: Bar charts displaying cultural affinity scores using Plotly.
+3. `PredictionDashboard`: Shows demand uplift percentage and marketing strategy in a two-column layout.
+4. `ProductKeywords`: Text input for comma-separated product keywords.
+5. `ProductDescription`: Text area for detailed product descriptions.
+
+## Usage
+1. Run `streamlit run src/main.py`.
+2. Select a location and category, enter keywords and description, then click "Generate Insights and Predictions".
+3. View cultural insights as charts and predictions/strategies in the dashboard.
+4. Receive Discord alerts for predictions.
