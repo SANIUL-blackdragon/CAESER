@@ -1777,6 +1777,7 @@ export default QlooService;
 
 const { OpenRouter } = require('langchain/llms/openrouter');
 const { CircuitBreaker } = require('../utils/circuitBreaker');
+const NodeCache = require('node-cache');
 require('dotenv').config();
 
 class LLMService {
@@ -1790,26 +1791,42 @@ class LLMService {
       successThreshold: 2,
       timeout: 10000
     });
+    this.cache = new NodeCache({ stdTTL: 3600 }); // Cache with 1-hour TTL
   }
 
   async getPrediction(product, insights) {
-    const prompt = this._generatePrompt(product, insights);
-    return this.circuitBreaker.callService(() =>
-      this.llm.call(prompt)
-        .then(response => this._processResponse(response))
+    const sanitize = (str) => str.trim().replace(/[^'\w\s.,-]/gi, '');
+    if (typeof product !== 'string') {
+      throw new Error('Product must be a string');
+    }
+    product = sanitize(product);
+    const cacheKey = `${product}:${JSON.stringify(insights)}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached) return cached;
+    const response = await this.circuitBreaker.callService(() =>
+      this.llm.call(this._generatePrompt(product, insights)).then(res => this._processResponse(res))
     );
+    this.cache.set(cacheKey, response);
+    return response;
   }
 
   _generatePrompt(product, insights) {
-    return `Given the product '${product}' and cultural insights ${JSON.stringify(insights)},
-    predict demand uplift as a percentage and suggest a marketing strategy.`;
+    return `
+      You are an expert market analyst. Based on the product '${product}' and cultural insights ${JSON.stringify(insights)}, provide:
+      1. Demand uplift as a percentage (e.g., "15%").
+      2. A concise marketing strategy (e.g., "Target urban youth via social media").
+      Example:
+      - Product: Sneakers, Insights: { affinity: 0.85 }
+      - Response: 20% uplift, "Leverage influencer campaigns on Instagram."
+    `;
   }
 
   _processResponse(response) {
-    const lines = response.split('\n');
+    const upliftMatch = response.match(/(\d+)%?\s*uplift/i);
+    const strategyMatch = response.match(/strategy:\s*(.+)$/im);
     return {
-      uplift: lines.find(l => l.includes('uplift')) || 'Unknown',
-      strategy: lines.find(l => l.includes('strategy')) || 'Unknown'
+      uplift: upliftMatch ? upliftMatch[1] + '%' : 'Unknown',
+      strategy: strategyMatch ? strategyMatch[1] : 'Unknown'
     };
   }
 }
@@ -1823,64 +1840,57 @@ import { config } from 'dotenv';
 import { CircuitBreaker } from '../utils/circuitBreaker';
 import retry from 'async-retry';
 
-config(); // Load environment variables
+config();
 
 class QlooService {
-  // Fetches cultural insights for a given location and category.
-  // @param {String} location - The location for the cultural insights (e.g., "New York").
-  // @param {String} category - The category for the cultural insights (e.g., "music").
-  // @returns {Object} An object with success (boolean), data (any), and message (string).
+  /**
+   * Fetches cultural insights for a given location and category.
+   * @param {string} location - The location for insights (e.g., "New York, NY").
+   * @param {string} category - The category for insights (e.g., "music").
+   * @returns {Promise<{ success: boolean, data: any, message: string }>} Response object.
+   * @throws {Error} If inputs are invalid or API key is missing.
+   */
   static async getCulturalInsights(location, category) {
-    // Input validation
-    if (!process.env.QLOO_API_KEY) {
-      throw new Error('QLOO_API_KEY environment variable not configured');
+    const sanitize = (str) => str.trim().replace(/[^\w\s,.-]/gi, '');
+
+    // Consolidated validation
+    if (!process.env.QLOO_API_KEY) throw new Error('QLOO_API_KEY not configured');
+    if (!location || typeof location !== 'string' || location.trim().length === 0) {
+      throw new Error('Invalid location');
     }
-    if (typeof location !== 'string' || location.length === 0) {
-      throw new Error('Invalid location parameter: must be a non-empty string');
-    }
-    if (typeof category !== 'string' || category.length === 0) {
-      throw new Error('Invalid category parameter: must be a non-empty string');
+    if (!category || typeof category !== 'string' || category.trim().length === 0) {
+      throw new Error('Invalid category');
     }
 
-    const circuitBreaker = new CircuitBreaker({
-      failureThreshold: 3,
-      successThreshold: 2,
-      timeout: 15000,
-    });
+    location = sanitize(location);
+    category = sanitize(category);
 
-    // Request logging
-    console.log(`[Qloo API Request] Location: ${location}, Category: ${category}, Timestamp: ${new Date().toISOString()}`);
+    const logger = console; // Replace with proper logger in production
+    logger.info(`[Qloo API Request] Location: ${location}, Category: ${category}, Timestamp: ${new Date().toISOString()}`);
+
+    const circuitBreaker = new CircuitBreaker({ failureThreshold: 3, successThreshold: 2, timeout: 15000 });
 
     return circuitBreaker.callService(async () => {
       return retry(
-        // Retry callback function
-        async (bail) => {
+        async () => {
           try {
-            const response = await axios.get('https://qloo-api.com/v1/cultural_insights', {
-              headers: {
-                'X-API-KEY': process.env.QLOO_API_KEY,
-                'Content-Type': 'application/json',
-              },
-              params: {
-                location,
-                category,
-                granularity: 'city',
-              },
+            const response = await axios.get('https://hackathon.api.qloo.com/v2/insights', {
+              headers: { 'X-API-KEY': process.env.QLOO_API_KEY, 'Content-Type': 'application/json' },
+              params: { 'filter.type': 'urn:entity:product', 'signal.location.query': location, 'filter.tags': category },
               timeout: 5000,
             });
 
-            return {
-              success: true,
-              data: response.data,
-              message: 'Success',
-            };
-          } catch (error) {
-            console.error('Qloo API Error:', error.response ? error.response.data : error.message);
-            const isRetryable = error.response && error.response.status >= 500;
-            if (!isRetryable) {
-              bail(error);
+            if (!response.data || typeof response.data !== 'object' || !response.data.success) {
+              throw new Error('API returned invalid or unsuccessful response');
             }
-            throw error;
+
+            return { success: true, data: response.data, message: 'Success' };
+          } catch (error) {
+            logger.error(`Qloo API Error: ${error.message}`);
+            if (error.response && [429, 503].includes(error.response.status)) {
+              throw error; // Retryable
+            }
+            return { success: false, data: null, message: error.message };
           }
         },
         {
@@ -1888,13 +1898,14 @@ class QlooService {
           factor: 2,
           minTimeout: 1000,
           maxTimeout: 5000,
-          // @param {Error} err - The error that triggered the retry.
-          onRetry: (err) => {
-            console.log(`Retrying Qloo API call after error: ${err.message}`);
-          },
+          onRetry: (err) => logger.info(`Retrying Qloo API call: ${err.message}`),
         }
       );
-    });
+    }).catch(() => ({
+      success: false,
+      data: null,
+      message: 'Service unavailable due to circuit breaker',
+    }));
   }
 }
 

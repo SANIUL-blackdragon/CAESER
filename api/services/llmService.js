@@ -1,5 +1,6 @@
 const { OpenRouter } = require('langchain/llms/openrouter');
 const { CircuitBreaker } = require('../utils/circuitBreaker');
+const NodeCache = require('node-cache');
 require('dotenv').config();
 
 class LLMService {
@@ -13,26 +14,42 @@ class LLMService {
       successThreshold: 2,
       timeout: 10000
     });
+    this.cache = new NodeCache({ stdTTL: 3600 }); // Cache with 1-hour TTL
   }
 
   async getPrediction(product, insights) {
-    const prompt = this._generatePrompt(product, insights);
-    return this.circuitBreaker.callService(() =>
-      this.llm.call(prompt)
-        .then(response => this._processResponse(response))
+    const sanitize = (str) => str.trim().replace(/[^'\w\s.,-]/gi, '');
+    if (typeof product !== 'string') {
+      throw new Error('Product must be a string');
+    }
+    product = sanitize(product);
+    const cacheKey = `${product}:${JSON.stringify(insights)}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached) return cached;
+    const response = await this.circuitBreaker.callService(() =>
+      this.llm.call(this._generatePrompt(product, insights)).then(res => this._processResponse(res))
     );
+    this.cache.set(cacheKey, response);
+    return response;
   }
 
   _generatePrompt(product, insights) {
-    return `Given the product '${product}' and cultural insights ${JSON.stringify(insights)},
-    predict demand uplift as a percentage and suggest a marketing strategy.`;
+    return `
+      You are an expert market analyst. Based on the product '${product}' and cultural insights ${JSON.stringify(insights)}, provide:
+      1. Demand uplift as a percentage (e.g., "15%").
+      2. A concise marketing strategy (e.g., "Target urban youth via social media").
+      Example:
+      - Product: Sneakers, Insights: { affinity: 0.85 }
+      - Response: 20% uplift, "Leverage influencer campaigns on Instagram."
+    `;
   }
 
   _processResponse(response) {
-    const lines = response.split('\n');
+    const upliftMatch = response.match(/(\d+)%?\s*uplift/i);
+    const strategyMatch = response.match(/strategy:\s*(.+)$/im);
     return {
-      uplift: lines.find(l => l.includes('uplift')) || 'Unknown',
-      strategy: lines.find(l => l.includes('strategy')) || 'Unknown'
+      uplift: upliftMatch ? upliftMatch[1] + '%' : 'Unknown',
+      strategy: strategyMatch ? strategyMatch[1] : 'Unknown'
     };
   }
 }
