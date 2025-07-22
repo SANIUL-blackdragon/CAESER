@@ -11,6 +11,13 @@ class QlooService {
   // @param {String} category - The category for the cultural insights (e.g., "music").
   // @returns {Object} An object with success (boolean), data (any), and message (string).
   static async getCulturalInsights(location, category) {
+    const sanitize = (str) => str.replace(/[^\w\s]/gi, '');
+    if (!process.env.QLOO_API_KEY) throw new Error('QLOO_API_KEY not configured');
+    if (!location || typeof location !== 'string') throw new Error('Invalid location');
+    if (!category || typeof category !== 'string') throw new Error('Invalid category');
+
+    location = sanitize(location);
+    category = sanitize(category);
     if (!process.env.QLOO_API_KEY) throw new Error('QLOO_API_KEY not configured');
     if (typeof location !== 'string' || location.length === 0) throw new Error('Invalid location');
     if (typeof category !== 'string' || category.length === 0) throw new Error('Invalid category');
@@ -20,16 +27,18 @@ class QlooService {
 
     return circuitBreaker.callService(async () => {
       return retry(async () => {
-        const response = await axios.get('https://hackathon.api.qloo.com/v2/insights', {
-          headers: { 'X-API-KEY': process.env.QLOO_API_KEY, 'Content-Type': 'application/json' },
-          params: {
-            'filter.type': 'urn:entity:product',
-            'signal.location.query': location,
-            'filter.tags': category
-          },
-          timeout: 5000
-        });
-        return { success: true, data: response.data, message: 'Success' };
+        try {
+          const response = await axios.get('https://hackathon.api.qloo.com/v2/insights', {
+            headers: { 'X-API-KEY': process.env.QLOO_API_KEY, 'Content-Type': 'application/json' },
+            params: { 'filter.type': 'urn:entity:product', 'signal.location.query': location, 'filter.tags': category },
+            timeout: 5000
+          });
+          if (!response.data.success) throw new Error('API returned unsuccessful response');
+          return { success: true, data: response.data, message: 'Success' };
+        } catch (error) {
+          console.error(`Qloo API Error: ${error.message}`);
+          return { success: false, data: null, message: error.message };
+        }
       }, {
         retries: 3,
         factor: 2,

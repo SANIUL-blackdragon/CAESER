@@ -3,6 +3,7 @@
 *.env
 .env.local
 secrets/
+*summary-of-pro.md
 
 # IDE
 .vscode/

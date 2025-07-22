@@ -16,32 +16,18 @@ fs.writeFileSync(dbPath, '');
 
 // Execute SQL commands to create tables
 const commands = [
-  `"${sqlitePath}" "${dbPath}" "CREATE TABLE cultural_insights (id INTEGER PRIMARY KEY AUTOINCREMENT, location TEXT NOT NULL, category TEXT NOT NULL, data TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"`
+  `"${sqlitePath}" "${dbPath}" "CREATE TABLE cultural_insights (id INTEGER PRIMARY KEY AUTOINCREMENT, location TEXT NOT NULL, category TEXT NOT NULL, data TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"`,
+  `"${sqlitePath}" "${dbPath}" "CREATE INDEX IF NOT EXISTS idx_insights ON cultural_insights(location, category)"`
 ];
-
-const { CircuitBreaker } = require('../utils/circuitBreaker');
-const retry = require('async-retry');
-
-const circuitBreaker = new CircuitBreaker({
-  failureThreshold: 3,
-  successThreshold: 2,
-  timeout: 30000
-});
 
 return circuitBreaker.callService(() =>
   retry(async () => {
     return new Promise((resolve, reject) => {
       exec(commands.join(' && '), (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Error: ${error.message}`);
-        return reject(error);
-      }
-      if (stderr) {
-        console.error(`Stderr: ${stderr}`);
-        return reject(stderr);
-      }
-      console.log('Database initialized successfully');
-      resolve(stdout);
+        if (error) return reject(error);
+        if (stderr) return reject(stderr);
+        console.log('Database initialized with index');
+        resolve(stdout);
     });
   if (error) {
     console.error(`Error: ${error.message}`);
