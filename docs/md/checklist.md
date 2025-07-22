@@ -40,12 +40,12 @@ Esteemed user, this checklist delineates the 5-day development plan for CÆSER (
 - [X] Commit LLM integration and prompt design to GitHub - Pushed 01:25 - [8/20]
 
 ### Day 3: Synthetic Buyer Modeling and Demand Forecasting
-- [ ] Implement lightweight synthetic buyer modeling using Qloo’s affinity data (focus on single use case, e.g., sneakers in NYC)
-- [ ] Compute hype scores based on synthetic buyer reactions (e.g., average reaction score)
-- [ ] Develop simple demand forecasting logic (e.g., rule-based or linear regression)
-- [ ] Integrate modeling with Streamlit dashboard for visualization
-- [ ] Test modeling and forecasting with sample inputs
-- [ ] Commit modeling and forecasting code to GitHub
+- [X] Implement lightweight synthetic buyer modeling using Qloo’s affinity data (focus on single use case, e.g., sneakers in NYC)
+- [X] Compute hype scores based on synthetic buyer reactions (e.g., average reaction score)
+- [X] Develop simple demand forecasting logic (e.g., rule-based or linear regression)
+- [X] Integrate modeling with Streamlit dashboard for visualization
+- [X] Test modeling and forecasting with sample inputs
+- [X] Commit modeling and forecasting code to GitHub
 
 ### Day 4: Testing and Demo Preparation
 - [ ] Test end-to-end flow, prioritizing critical paths (Qloo API, LLM predictions, UI rendering, Discord alerts)
