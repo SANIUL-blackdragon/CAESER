@@ -1,9 +1,22 @@
+```text
 # API keys and sensitive data
 *.key
 *.env
-.env.local
+*.env.local
 secrets/
-*summary-of-pro.md
+# Configuration files
+config.json
+settings.yaml
+*.config
+# Logs
+*.log
+*.out
+*.err
+# Plans and backups
+*.plan
+*.bak
+*.backup
+docs/
 
 # IDE
 .vscode/
@@ -14,6 +27,8 @@ dist/
 build/
 *.tmp
 *.temp
+local.settings.json
+test-results/
 
 # Dependencies
 node_modules/
@@ -22,3 +37,14 @@ venv/
 # Database files
 *.db
 *.sqlite
+*.sqlite3
+*.mdb
+*.accdb
+
+# Archives
+archive/
+
+# Test outputs
+*.log
+*.pytest_cache
+```
