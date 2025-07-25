@@ -1,4 +1,6 @@
 # Frontend Documentation
+## Application Architecture
+The frontend is built exclusively with Streamlit for a data-driven, user-friendly dashboard. React artifacts have been archived to `/archive` to avoid confusion.
 
 ## Application Architecture
 The frontend is built with Streamlit and organized into:

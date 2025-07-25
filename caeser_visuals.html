@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CÆSER System Visualizations</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .hover-scale { transition: transform 0.3s ease; }
+        .hover-scale:hover { transform: scale(1.02); }
+        .animate-fade-in { animation: fadeIn 0.6s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .section-divider {
+            background: linear-gradient(90deg, transparent, #e5e7eb, transparent);
+            height: 1px;
+            margin: 2rem 0;
+        }
+
+        /* Dark mode styles */
+        .dark body { background-color: #0f172a; color: #e2e8f0; }
+        .dark .bg-white { background-color: #1e293b !important; color: #e2e8f0 !important; }
+        .dark .text-gray-800 { color: #e2e8f0 !important; }
+        .dark .text-gray-600 { color: #94a3b8 !important; }
+        .dark .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4); }
+        .dark .section-divider { background: linear-gradient(90deg, transparent, #475569, transparent); }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="gradient-bg text-white p-4 shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold flex items-center">
+                <i data-lucide="activity" class="mr-2"></i>
+                CÆSER System Visualizations
+            </h1>
+            <button id="darkModeToggle" class="p-2 rounded-lg glass-effect hover:scale-110 transition-transform">
+                <i data-lucide="moon" id="darkIcon"></i>
+                <i data-lucide="sun" id="lightIcon" class="hidden"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <div class="gradient-bg text-white rounded-2xl p-8 mb-8 hover-scale">
+            <h2 class="text-3xl font-bold mb-4">Cultural Affinity Simulation Engine for Retail</h2>
+            <p class="text-lg opacity-90">
+                Comprehensive visual representation of the CÆSER system. Each visualization helps developers understand 
+                architecture, data flow, and key insights from cultural affinity analysis, demand forecasting, marketing strategies, and synthetic buyer modeling.
+            </p>
+        </div>
+
+        <!-- System Architecture Section -->
+        <section class="mb-12 animate-fade-in">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 flex items-center">
+                <i data-lucide="layout-dashboard" class="mr-3 text-indigo-600"></i>
+                Overall System Architecture
+            </h2>
+            <p class="text-gray-600 mb-6">
+                The architecture visualizations illustrate how the CÆSER system is structured and how data flows between modules. 
+                Understanding the architecture is crucial for developers to grasp system interactions.
+            </p>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white rounded-xl shadow-lg p-6 hover-scale">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">System Flow Chart</h3>
+                    <p class="text-sm text-gray-600 mb-4">
+                        High-level data flow between main modules - from user interaction to final insights
+                    </p>
+                    <div class="mermaid">
+                        graph TD
+                            A[👤 User] --> B[🎨 Frontend]
+                            B --> C[⚙️ API Gateway]
+                            C --> D[📊 Data Processing]
+                            D --> E[🎯 Qloo API]
+                            D --> F[🤖 OpenRouter API]
+                            D --> G[💾 Database]
+                            C --> H[🔔 Services]
+                            H --> I[💬 Discord Bot]
+                            B --> J[📈 Dashboard]
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-lg p-6 hover-scale">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Sequence Diagram</h3>
+                    <p class="text-sm text-gray-600 mb-4">
+                        Detailed view of processing steps and component interactions
+                    </p>
+                    <div class="mermaid">
+                        sequenceDiagram
+                            participant U as 👤 User
+                            participant F as 🎨 Frontend
+                            participant A as ⚙️ API
+                            participant D as 📊 Data Processing
+                            participant Q as 🎯 Qloo
+                            participant O as 🤖 OpenRouter
+                            participant DB as 💾 Database
+                            participant DS as 💬 Discord
+
+                            U->>F: Select market/product
+                            F->>A: Request insights
+                            A->>D: Process request
+                            D->>Q: Fetch cultural data
+                            Q-->>D: Return affinity scores
+                            D->>O: Generate predictions
+                            O-->>D: Return predictions
+                            D->>DB: Store data
+                            D-->>A: Send processed data
+                            A-->>F: Return insights
+                            F-->>U: Display results
+                            A->>DS: Send Discord alert
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <!-- Cultural Affinity Analysis -->
+        <section class="mb-12 animate-fade-in">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 flex items-center">
+                <i data-lucide="users" class="mr-3 text-green-600"></i>
+                Cultural Affinity Analysis
+            </h2>
+            <p class="text-gray-600 mb-6">
+                Identify market preferences based on cultural insights from Qloo API. These visualizations help understand 
+                how affinity scores are distributed across traits, regions, and categories.
+            </p>
+
+            <div class="grid lg:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-lg p-6 hover-scale">
+                    <h4 class="text-lg font-semibold mb-3">Affinity Scores</h4>
+                    <canvas id="affinityBarChart" width="400" height="200"></canvas>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 hover-scale lg:col-span-2">
+                    <h4 class="text-lg font-semibold mb-3">Regional Heat Map</h4>
+                    <div id="affinityHeatMap" class="w-full h-64"></div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h4 class="text-lg font-semibold mb-3">Trait Relationships</h4>
+                <div class="mermaid">
+                    graph LR
+                        A[🎭 Arts & Culture] --> B[🛍️ Shopping]
+                        A --> C[🍽️ Food & Drink]
+                        B --> D[💰 Luxury Goods]
+                        C --> D
+                        B --> E[🎯 Targeted Marketing]
+                        C --> E
+                </div>
+            </div>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <!-- Demand Forecasting -->
+        <section class="mb-12 animate-fade-in">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 flex items-center">
+                <i data-lucide="trending-up" class="mr-3 text-blue-600"></i>
+                Demand Forecasting
+            </h2>
+            <p class="text-gray-600 mb-6">
+                Predict sales uplift based on cultural insights. Visualize demand trends, cumulative growth, and forecast distributions.
+            </p>
+
+            <div class="grid lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-lg p-6 hover-scale">
+                    <h4 class="text-lg font-semibold mb-3">Demand Trends</h4>
+                    <canvas id="demandLineChart" width="400" height="200"></canvas>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 hover-scale">
+                    <h4 class="text-lg font-semibold mb-3">Cumulative Growth</h4>
+                    <canvas id="demandAreaChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h4 class="text-lg font-semibold mb-3">Demand Distribution</h4>
+                <div id="demandBoxPlot" class="w-full h-64"></div>
+            </div>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <!-- Marketing Strategies -->
+        <section class="mb-12 animate-fade-in">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 flex items-center">
+                <i data-lucide="target" class="mr-3 text-purple-600"></i>
+                Marketing Strategies
+            </h2>
+            <p class="text-gray-600 mb-6">
+                Generate actionable recommendations based on insights. Track resource allocation, strategy effectiveness, and decision trees.
+            </p>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white rounded-xl shadow-lg p-6 hover-scale">
+                    <h4 class="text-lg font-semibold mb-3">Resource Allocation</h4>
+                    <div class="mermaid">
+                        pie title Marketing Budget Distribution
+                            "📱 Social Media" : 40
+                            "📧 Email Campaign" : 30
+                            "🤳 Influencer Marketing" : 30
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-lg p-6 hover-scale">
+                    <h4 class="text-lg font-semibold mb-3">Strategy Flow</h4>
+                    <div class="mermaid">
+                        sankey-beta
+                            Social Media,Engagement,100
+                            Email Campaign,Conversions,50
+                            Influencer Marketing,Awareness,80
+                            Engagement,Sales,60
+                            Conversions,Sales,40
+                            Awareness,Sales,20
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6 mt-6">
+                <h4 class="text-lg font-semibold mb-3">Decision Tree</h4>
+                <div class="mermaid">
+                    graph TD
+                        A[🎯 Start] --> B{💰 Budget > $10k?}
+                        B -->|Yes| C[🤳 Influencer Marketing]
+                        B -->|No| D{👥 Young Audience?}
+                        D -->|Yes| E[📱 Social Media]
+                        D -->|No| F[📧 Email Campaign]
+                </div>
+            </div>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <!-- Synthetic Buyer Modeling -->
+        <section class="mb-12 animate-fade-in">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 flex items-center">
+                <i data-lucide="user-cog" class="mr-3 text-orange-600"></i>
+                Synthetic Buyer Modeling
+            </h2>
+            <p class="text-gray-600 mb-6">
+                Simulate consumer behavior to generate hype scores. Analyze buyer personas and demographic distributions.
+            </p>
+
+            <div class="grid lg:grid-cols-3 gap-6">
+                <div class="bg-white rounded-xl shadow-lg p-6 hover-scale">
+                    <h4 class="text-lg font-semibold mb-3">Persona Radar</h4>
+                    <canvas id="buyerRadarChart" width="400" height="400"></canvas>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 hover-scale">
+                    <h4 class="text-lg font-semibold mb-3">Demographics</h4>
+                    <canvas id="buyerScatterPlot" width="400" height="200"></canvas>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 hover-scale">
+                    <h4 class="text-lg font-semibold mb-3">Hype Distribution</h4>
+                    <canvas id="hypeHistogram" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Project Timeline -->
+        <section class="mb-12 animate-fade-in">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 flex items-center">
+                <i data-lucide="calendar-clock" class="mr-3 text-red-600"></i>
+                Project Timeline
+            </h2>
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="mermaid">
+                    gantt
+                        title CÆSER Development Timeline
+                        dateFormat  YYYY-MM-DD
+                        section 🚀 Setup
+                        API Keys & Environment    :a1, 2025-07-19, 1d
+                        Qloo Integration        :after a1, 1d
+                        section 💻 Development
+                        LLM Integration       :2025-07-21, 1d
+                        Buyer Modeling        :after a2, 1d
+                        Forecasting Engine    :after a3, 1d
+                        section 🎯 Deployment
+                        Testing & QA          :2025-07-24, 1d
+                        Production Release    :2025-07-25, 1d
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#667eea',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#764ba2',
+                lineColor: '#374151',
+                secondaryColor: '#f3f4f6',
+                tertiaryColor: '#e5e7eb'
+            }
+        });
+
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Dark Mode Toggle
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const darkIcon = document.getElementById('darkIcon');
+        const lightIcon = document.getElementById('lightIcon');
+        let isDark = false;
+
+        darkModeToggle.addEventListener('click', () => {
+            isDark = !isDark;
+            document.documentElement.classList.toggle('dark', isDark);
+            darkIcon.classList.toggle('hidden', isDark);
+            lightIcon.classList.toggle('hidden', !isDark);
+        });
+
+        // Chart configurations
+        Chart.defaults.font.family = 'Inter';
+        Chart.defaults.color = '#374151';
+        Chart.defaults.borderColor = '#e5e7eb';
+
+        // Affinity Bar Chart
+        const ctxBar = document.getElementById('affinityBarChart').getContext('2d');
+        new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: ['🎭 Arts', '🛍️ Shopping', '🍽️ Food', '🏃 Sports', '🎮 Gaming'],
+                datasets: [{
+                    label: 'Affinity Score',
+                    data: [0.8, 0.6, 0.9, 0.7, 0.85],
+                    backgroundColor: ['rgba(102, 126, 234, 0.8)', 'rgba(118, 75, 162, 0.8)', 'rgba(255, 99, 132, 0.8)', 'rgba(54, 162, 235, 0.8)', 'rgba(255, 206, 86, 0.8)'],
+                    borderColor: ['rgba(102, 126, 234, 1)', 'rgba(118, 75, 162, 1)', 'rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)'],
+                    borderWidth: 2,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, max: 1 } }
+            }
+        });
+
+        // Heat Map
+        const heatData = [{
+            z: [[0.8, 0.6, 0.9], [0.7, 0.85, 0.75], [0.9, 0.8, 0.95]],
+            x: ['🇺🇸 North America', '🇪🇺 Europe', '🇦🇺 Asia Pacific'],
+            y: ['Fashion', 'Electronics', 'Home & Garden'],
+            type: 'heatmap',
+            colorscale: 'Viridis',
+            showscale: true
+        }];
+        Plotly.newPlot('affinityHeatMap', heatData, { responsive: true, margin: { t: 20 } });
+
+        // Demand Line Chart
+        const ctxLine = document.getElementById('demandLineChart').getContext('2d');
+        new Chart(ctxLine, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Weekly Demand',
+                    data: [120, 190, 300, 500, 200, 300],
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // Area Chart
+        const ctxArea = document.getElementById('demandAreaChart').getContext('2d');
+        new Chart(ctxArea, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Cumulative Sales',
+                    data: [120, 310, 610, 1110, 1310, 1610],
+                    fill: true,
+                    backgroundColor: 'rgba(167, 139, 250, 0.2)',
+                    borderColor: 'rgba(167, 139, 250, 1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // Box Plot
+        const boxData = [{
+            y: [10, 15, 25, 35, 50, 60, 75, 85, 100],
+            type: 'box',
+            name: 'Demand Distribution',
+            boxpoints: 'all',
+            jitter: 0.3,
+            pointpos: -1.8
+        }];
+        Plotly.newPlot('demandBoxPlot', boxData, { responsive: true, margin: { t: 20 } });
+
+        // Radar Chart
+        const ctxRadar = document.getElementById('buyerRadarChart').getContext('2d');
+        new Chart(ctxRadar, {
+            type: 'radar',
+            data: {
+                labels: ['Excitement', 'Loyalty', 'Engagement', 'Trust', 'Innovation'],
+                datasets: [{
+                    label: 'Tech Enthusiast',
+                    data: [90, 70, 85, 80, 95],
+                    backgroundColor: 'rgba(167, 139, 250, 0.2)',
+                    borderColor: 'rgba(167, 139, 250, 1)',
+                    pointBackgroundColor: 'rgba(167, 139, 250, 1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: { r: { beginAtZero: true, max: 100 } }
+            }
+        });
+
+        // Scatter Plot
+        const ctxScatter = document.getElementById('buyerScatterPlot').getContext('2d');
+        new Chart(ctxScatter, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Buyer Personas',
+                    data: [
+                        {x: 25, y: 50000}, {x: 35, y: 75000}, {x: 45, y: 100000},
+                        {x: 28, y: 60000}, {x: 32, y: 85000}, {x: 40, y: 95000}
+                    ],
+                    backgroundColor: 'rgba(167, 139, 250, 0.5)',
+                    borderColor: 'rgba(167, 139, 250, 1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Age' } },
+                    y: { title: { display: true, text: 'Income ($)' } }
+                }
+            }
+        });
+
+        // Histogram
+        const ctxHistogram = document.getElementById('hypeHistogram').getContext('2d');
+        new Chart(ctxHistogram, {
+            type: 'bar',
+            data: {
+                labels: ['0.0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1.0'],
+                datasets: [{
+                    label: 'Buyer Count',
+                    data: [15, 25, 45, 35, 20],
+                    backgroundColor: 'rgba(167, 139, 250, 0.8)',
+                    borderColor: 'rgba(167, 139, 250, 1)',
+                    borderWidth: 2,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // Smooth scroll for internal links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Add intersection observer for animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-fade-in');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('section').forEach(section => {
+            observer.observe(section);
+        });
+    </script>
+</body>
+</html>

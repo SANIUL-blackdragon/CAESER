@@ -1,0 +1,12 @@
+```text
+fastapi
+uvicorn
+streamlit
+requests
+retrying
+openai
+python-dotenv
+cachetools
+plotly
+pandas
+```
