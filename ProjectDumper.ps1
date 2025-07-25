@@ -1,8 +1,8 @@
-﻿# Enhanced Project Dumper 9000™ with Database File Handling
+﻿#﻿# Enhanced Project Dumper 9000™ with Database File Handling
 param(
     [string]$OutputPath = "docs/md/summary-of-alpha.md",
-    [string[]]$ExcludeDirs = @(".git", "venv", "node_modules", ".vscode", "__pycache__"),
-    [string[]]$ExcludeFiles = @("\.log$", "\.tmp$", "\.exe$", "\.dll$", "\.bin$"),
+    [string[]]$ExcludeDirs = @(".git", "venv", "node_modules", ".vscode", "__pycache__", "test", "tests", "__tests__", "spec"),
+    [string[]]$ExcludeFiles = @("\.log$", "\.tmp$", "\.exe$", "\.dll$", "\.bin$", "\.txt$"),
     [string[]]$DatabaseExtensions = @(".db", ".sqlite", ".sqlite3", ".mdb", ".accdb"),
     [int]$MaxFileSize = 1MB,
     [switch]$IncludeBinary

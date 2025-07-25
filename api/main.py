@@ -1,4 +1,5 @@
-```python
+from api.utils.logging import setup_logging
+logger = setup_logging()
 from fastapi import FastAPI
 from .services import qloo_service, llm_service, discord_service, hype_engine
 import logging
@@ -37,4 +38,9 @@ async def send_discord_alert(data: dict):
     hype_data = data.get("hype_data")
     logger.info(f"Sending Discord alert for {prediction.get('product', {}).get('name', 'Unknown')}")
     return discord_service.send_alert(prediction, hype_data)
-```
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    logger.info("Health check endpoint called")
+    return {"status": "ok"}
+logger.info('Test log message from api/main.py')

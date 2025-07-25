@@ -1,3 +1,6 @@
+from api.utils.logging import setup_logging
+logger = setup_logging()
+
 ```python
 import sqlite3
 import os

@@ -1,4 +1,5 @@
-```python
+from api.utils.logging import setup_logging
+logger = setup_logging()
 import streamlit as st
 import requests
 import json
@@ -182,4 +183,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-```
+logger.info('Streamlit app initialized successfully')
+# Note: Ensure the API_BASE_URL is updated to the correct endpoint after deployment.

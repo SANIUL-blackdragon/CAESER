@@ -1,9 +1,9 @@
 # Project Dump of D:\LAPTOP\TO_EARN\AI\CAESER
 
-**Generated:** 2025-07-25 06:31:59
+**Generated:** 2025-07-25 07:15:52
 **Max File Size:** 1MB
-**Excluded Directories:** .git, venv, node_modules, .vscode, __pycache__
-**Excluded Files:** \.log$, \.tmp$, \.exe$, \.dll$, \.bin$
+**Excluded Directories:** .git, venv, node_modules, .vscode, __pycache__, test, tests, __tests__, spec
+**Excluded Files:** \.log$, \.tmp$, \.exe$, \.dll$, \.bin$, \.txt$
 **Database Extensions:** .db, .sqlite, .sqlite3, .mdb, .accdb
 
 ---
@@ -22,12 +22,25 @@ DB_PATH=./data/caeser.db
 ---
 ### File: .gitignore
 ```text
+```text
 # API keys and sensitive data
 *.key
 *.env
-.env.local
+*.env.local
 secrets/
-*summary-of-pro.md
+# Configuration files
+config.json
+settings.yaml
+*.config
+# Logs
+*.log
+*.out
+*.err
+# Plans and backups
+*.plan
+*.bak
+*.backup
+docs/
 
 # IDE
 .vscode/
@@ -38,6 +51,8 @@ dist/
 build/
 *.tmp
 *.temp
+local.settings.json
+test-results/
 
 # Dependencies
 node_modules/
@@ -46,6 +61,17 @@ venv/
 # Database files
 *.db
 *.sqlite
+*.sqlite3
+*.mdb
+*.accdb
+
+# Archives
+archive/
+
+# Test outputs
+*.log
+*.pytest_cache
+```
 ```
 
 ---
@@ -593,7 +619,79 @@ venv/
 
 ---
 ### File: ProjectDumper.ps1
-_[Binary file - 7094 bytes]_
+_[Binary file - 7146 bytes]_
+```text
+```markdown
+# CÆSER (Cultural Affinity Simulation Engine for Retail)
+
+## Project Overview
+CÆSER is an AI system designed to predict, simulate, and strategize market behavior for e-commerce merchants through cultural intelligence and predictive analytics. It integrates Qloo's Taste AI™ API for cultural insights and DeepSeek models via OpenRouter.ai for demand forecasting and marketing strategies. The system delivers actionable insights through a Streamlit dashboard and Discord alerts.
+
+## Key Features
+- **Cultural Affinity Analysis**: Leverages Qloo API for insights into market preferences (e.g., sneaker trends in NYC).
+- **Demand Forecasting**: Predicts sales uplift using DeepSeek models.
+- **Marketing Strategies**: Generates actionable recommendations based on cultural data.
+- **Synthetic Buyer Modeling**: Simulates consumer behavior with hype scores.
+- **Visualizations**: Interactive charts (bar, heatmap, line) for insights and predictions.
+- **Discord Alerts**: Real-time notifications for predictions and strategies.
+
+## Directory Structure
+- `/api`: FastAPI backend with endpoints for insights, predictions, and alerts.
+  - `/services`: Integrations with Qloo, OpenRouter, and Discord.
+- `/data`: SQLite database and data processing scripts.
+- `/frontend`: Streamlit dashboard for user interaction and visualizations.
+- `/docs`: Documentation, including architecture and API guides.
+- `/tests`: Unit and integration tests.
+
+## Setup Instructions
+1. Clone the repository: `git clone <repo-url>`
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # Linux/Mac
+   venv\Scripts\activate  # Windows
+   ```
+3. Install dependencies: `pip install -r requirements.txt`
+4. Copy `.env.example` to `.env` and add your API keys:
+   ```text
+   QLOO_API_KEY=your_qloo_key
+   OPENROUTER_API_KEY=your_openrouter_key
+   DISCORD_WEBHOOK_URL=your_webhook_url
+   ```
+5. Initialize the database: `python data/init_db.py`
+6. Run the API: `uvicorn api.main:app --reload`
+7. Run the frontend: `streamlit run frontend/src/main.py`
+8. Access the dashboard at `http://localhost:8501`
+
+## Usage
+1. Open the Streamlit dashboard.
+2. Select a location (e.g., "New York, NY") and category (e.g., "sneakers").
+3. Choose an insight type (brand, demographics, heatmap).
+4. Enter product keywords and description.
+5. Click "Generate Insights and Predictions" to view charts and recommendations.
+6. Receive Discord alerts with results.
+
+
+## Contribution Guidelines
+- Follow PEP 8 for Python code.
+- Use `snake_case` for Python files and variables.
+- Write unit tests with `pytest` in `/tests`.
+- Document public interfaces with docstrings.
+- Submit pull requests to the `develop` branch.
+
+## Hackathon Submission
+- **Qloo Hackathon Deadline**: July 29, 2025
+- **Demo URL**: [Heroku URL]
+- **Video**: [YouTube/Vimeo link]
+- **Repository**: [GitHub URL]
+- **Description**: CÆSER leverages Qloo's Taste AI™ and DeepSeek models to deliver cultural insights and demand predictions for e-commerce merchants, demonstrated with a sneaker launch use case in NYC, achieving up to 25% uplift in conversions.
+
+## Future Plans
+- Convert to a mobile app for RevenueCat Shipaton 2025 (August 1–September 30, 2025).
+- Integrate RevenueCat SDK for subscriptions.
+- Add advanced analytics (e.g., A/B testing simulations).
+```
+```
 
 ---
 ### File: README.md
@@ -649,263 +747,67 @@ CÆSER is an AI system designed to predict, simulate, and strategize market beha
 ```
 
 ---
-### File: requirements.txt
-```text
-fastapi
-uvicorn
-streamlit
-requests
-retrying
-openai
-python-dotenv
-```
-
----
 ### File: api\main.py
 ```python
-# api/main.py
+```python
 from fastapi import FastAPI
 from .services import qloo_service, llm_service, discord_service, hype_engine
+import logging
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
 @app.get("/insights/{location}/{category}")
-async def get_insights(location: str, category: str):
+async def get_insights(location: str, category: str, insight_type: str = "brand"):
     """Fetch cultural insights for a location and category."""
-    return qloo_service.get_cultural_insights(location, category)
+    logger.info(f"Fetching insights for {location}/{category}/{insight_type}")
+    return qloo_service.get_cultural_insights(location, category, insight_type)
 
 @app.post("/predict/demand")
 async def predict_demand(data: dict):
     """Generate demand prediction based on product and insights."""
     product = data.get("product")
     insights = data.get("insights")
-    prediction = llm_service.get_prediction(product, insights)
-    if not prediction["success"]:
-        return prediction
-    hype_score = hype_engine.calculate_hype_score(insights)
-    discord_service.send_alert({"product": product, **prediction["data"]}, hype_score)
-    return prediction
+    logger.info(f"Generating prediction for product: {product.get('name', 'Unknown')}")
+    return llm_service.get_prediction(product, insights)
+
+@app.post("/hype/score")
+async def calculate_hype_score(data: dict):
+    """Calculate hype score based on insights."""
+    insights = data.get("insights")
+    logger.info("Calculating hype score")
+    return hype_engine.calculate_hype_score(insights)
+
+@app.post("/discord/alert")
+async def send_discord_alert(data: dict):
+    """Send Discord alert with prediction and hype score."""
+    prediction = data.get("prediction")
+    hype_data = data.get("hype_data")
+    logger.info(f"Sending Discord alert for {prediction.get('product', {}).get('name', 'Unknown')}")
+    return discord_service.send_alert(prediction, hype_data)
+```
 ```
 
 ---
 ### File: api\README.md
-```markdown
-# API Documentation
-
-## Architecture Overview
-The API is built using FastAPI and follows RESTful principles. It's organized into four main components:
-- Routes: Define API endpoints and request/response models
-- Controllers: Handle business logic and data processing
-- Models: Define data structures and database schemas
-- Services: Interface with external APIs (Qloo, OpenRouter)
-
-## Endpoints
-### Cultural Insights
-- `GET /insights/{market}/{category}` - Get cultural affinity data
-- `POST /insights/analyze` - Analyze custom data
-
-### Predictions
-- `POST /predict/demand` - Generate demand forecasts
-- `POST /predict/strategies` - Generate marketing strategies
-
-## Development Setup
-1. Install dependencies: `pip install -r requirements.txt`
-2. Set environment variables:
-   - `QLOO_API_KEY`
-   - `OPENROUTER_API_KEY`
-3. Run locally: `uvicorn main:app --reload`
-
-## Testing
-Run tests with: `pytest tests/api/`
-```
-
----
-### File: api\services\discord_service.py
+```python
 ```python
 import os
 import requests
-from datetime import datetime
-
-DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
-
-def send_alert(prediction, hype_data):
-    """Send a Discord notification with prediction and hype score details.
-    
-    Args:
-        prediction (dict): Prediction data (e.g., {'product': dict, 'uplift': float, 'strategy': str}).
-        hype_data (dict): Hype score data (e.g., {'averageScore': float}).
-    
-    Returns:
-        dict: Response with success status and message.
-    
-    Raises:
-        ValueError: If webhook URL or inputs are invalid.
-        requests.RequestException: If webhook request fails.
-    """
-    if not DISCORD_WEBHOOK_URL:
-        raise ValueError("DISCORD_WEBHOOK_URL not configured")
-    
-    if not isinstance(prediction, dict) or not all(key in prediction for key in ["product", "uplift", "strategy"]):
-        raise ValueError("Invalid prediction data")
-    if not isinstance(hype_data, dict) or "averageScore" not in hype_data:
-        raise ValueError("Invalid hype data")
-    
-    # Construct Discord embed
-    embed = {
-        "title": f"New Prediction for {prediction['product'].get('name', 'Unknown Product')}",
-        "description": f"**Category**: {prediction['product'].get('category', 'Unknown')}\n"
-                       f"**Uplift**: {prediction['uplift']:.2f}%\n"
-                       f"**Strategy**: {prediction['strategy']}\n"
-                       f"**Hype Score**: {hype_data['averageScore']:.2f}",
-        "color": 0x00ff00,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    
-    payload = {"embeds": [embed]}
-    
-    try:
-        response = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=5)
-        response.raise_for_status()
-        return {"success": True, "message": "Discord alert sent successfully"}
-    except requests.RequestException as e:
-        return {"success": False, "message": f"Failed to send Discord alert: {str(e)}"}
-```
-
----
-### File: api\services\hype_engine.py
-```python
-import random
-from typing import Dict
-
-def validate_insights(insights: Dict) -> None:
-    """Validate insights data structure.
-    
-    Args:
-        insights (dict): Cultural insights from Qloo API.
-    
-    Raises:
-        ValueError: If insights data is invalid.
-    """
-    if not isinstance(insights, dict) or not insights.get("data"):
-        raise ValueError("Invalid insights data")
-    if not isinstance(insights["data"], dict):
-        raise ValueError("Insights data must be a dictionary")
-
-def calculate_hype_score(insights: Dict) -> float:
-    """Calculate a hype score based on cultural insights with simulated consumer behavior.
-    
-    Args:
-        insights (dict): Cultural insights from Qloo API.
-    
-    Returns:
-        float: Hype score (0-100).
-    
-    Raises:
-        ValueError: If insights data is invalid.
-    """
-    validate_insights(insights)
-    
-    # Extract relevant metrics (mocked weights for simplicity)
-    affinity_score = insights["data"].get("affinity", 50.0)
-    trend_factor = insights["data"].get("trend", 1.0)
-    
-    # Simulate consumer behavior (e.g., likelihood of purchase)
-    base_score = affinity_score * trend_factor
-    simulation_noise = random.uniform(-10, 10)  # Add randomness for realism
-    
-    # Normalize to 0-100
-    hype_score = max(0.0, min(100.0, base_score + simulation_noise))
-    
-    return {"success": True, "averageScore": round(hype_score, 2), "message": "Hype score calculated"}
-```
-
----
-### File: api\services\llm_service.py
-```python
-import os
-from openai import OpenAI
+import logging
 from retrying import retry
+from cachetools import TTLCache
+from typing import Dict, Optional
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-SITE_URL = "https://caeser.example.com"  # Replace with your site URL
-SITE_NAME = "CÆSER"  # Replace with your site name
+# Initialize logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-def sanitize_input(input_data):
-    """Remove potentially harmful characters from input to prevent injection."""
-    if isinstance(input_data, str):
-        return input_data.strip().replace(r'[^\w\s,.-]', '')
-    return input_data
-
-@retry(stop_max_attempt_number=3, wait_exponential_multiplier=1000, wait_exponential_max=5000)
-def get_prediction(product, insights):
-    """Generate demand prediction and marketing strategy using OpenRouter API.
-    
-    Args:
-        product (dict): Product details (e.g., {'name': str, 'category': str, 'description': str}).
-        insights (dict): Cultural insights from Qloo API.
-    
-    Returns:
-        dict: Response with success status, data (uplift and strategy), and message.
-    
-    Raises:
-        ValueError: If API key or inputs are invalid.
-        Exception: If API call fails.
-    """
-    if not OPENROUTER_API_KEY:
-        raise ValueError("OPENROUTER_API_KEY not configured")
-    
-    if not isinstance(product, dict) or not all(key in product for key in ["name", "category", "description"]):
-        raise ValueError("Invalid product data: must include name, category, description")
-    if not isinstance(insights, dict) or not insights.get("data"):
-        raise ValueError("Invalid insights data")
-    
-    # Sanitize inputs
-    product_name = sanitize_input(product["name"])
-    product_category = sanitize_input(product["category"])
-    product_description = sanitize_input(product["description"])
-    
-    # Initialize OpenRouter client
-    client = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=OPENROUTER_API_KEY,
-    )
-    
-    # Construct prompt
-    prompt = f"""
-    Analyze the following product and cultural insights to predict demand uplift and suggest a marketing strategy.
-    Product: {product_name} ({product_category})
-    Description: {product_description}
-    Cultural Insights: {insights['data']}
-    Provide a response in JSON format with 'uplift' (percentage, float) and 'strategy' (string).
-    """
-    
-    try:
-        completion = client.chat.completions.create(
-            extra_headers={
-                "HTTP-Referer": SITE_URL,
-                "X-Title": SITE_NAME,
-            },
-            model="deepseek/deepseek-chat-v3-0324:free",
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-        result = completion.choices[0].message.content.strip()
-        import json
-        parsed_result = json.loads(result)
-        if not all(key in parsed_result for key in ["uplift", "strategy"]):
-            raise ValueError("Invalid LLM response format")
-        return {"success": True, "data": parsed_result, "message": "Prediction generated successfully"}
-    except Exception as e:
-        return {"success": False, "data": None, "message": f"LLM request failed: {str(e)}"}
-```
-
----
-### File: api\services\qloo_service.py
-```python
-import os
-import requests
-from retrying import retry
+# Initialize cache (TTL of 1 hour)
+cache = TTLCache(maxsize=100, ttl=3600)
 
 QLOO_API_KEY = os.getenv("QLOO_API_KEY")
 BASE_URL = "https://hackathon.api.qloo.com/v2/insights"
@@ -915,22 +817,19 @@ def sanitize_input(input_str: str) -> str:
     return input_str.strip().replace(r'[^\w\s,.-]', '')
 
 @retry(stop_max_attempt_number=3, wait_exponential_multiplier=1000, wait_exponential_max=5000)
-def get_cultural_insights(location: str, category: str) -> dict:
+def get_cultural_insights(location: str, category: str, insight_type: str = "brand") -> Dict:
     """Fetch cultural insights from Qloo API for a given location and category.
     
     Args:
         location (str): Geographic location (e.g., 'New York, NY').
         category (str): Product category (e.g., 'sneakers').
+        insight_type (str): Type of insight ('brand', 'demographics', 'heatmap'). Defaults to 'brand'.
     
     Returns:
-        dict: Response with success status, data, and message.
+        Dict: Response with success status, data, and message.
               Example: {
                   "success": bool,
-                  "data": {
-                      "entities": [...],
-                      "popularity": float,
-                      ...
-                  },
+                  "data": {...},
                   "message": str
               }
     
@@ -939,34 +838,69 @@ def get_cultural_insights(location: str, category: str) -> dict:
         requests.RequestException: If API call fails after retries.
     """
     if not QLOO_API_KEY:
+        logger.error("QLOO_API_KEY not configured")
         raise ValueError("QLOO_API_KEY not configured")
     if not location or not isinstance(location, str) or not location.strip():
+        logger.error("Invalid location provided")
         raise ValueError("Invalid location")
     if not category or not isinstance(category, str) or not category.strip():
+        logger.error("Invalid category provided")
         raise ValueError("Invalid category")
     
     location = sanitize_input(location)
     category = sanitize_input(category)
     
+    # Check cache
+    cache_key = f"{insight_type}:{location}:{category}"
+    if cache_key in cache:
+        logger.info(f"Returning cached insights for {cache_key}")
+        return cache[cache_key]
+    
     headers = {
         "X-Api-Key": QLOO_API_KEY,
         "Content-Type": "application/json"
     }
-    params = {
-        "filter.type": "urn:entity:brand",  # Assuming 'brand' for product categories like sneakers
-        "signal.location.query": location,
-        "filter.tags": f"urn:tag:keyword:brand:{category.lower()}"
-    }
+    
+    params = {}
+    if insight_type == "brand":
+        params = {
+            "filter.type": "urn:entity:brand",
+            "signal.location.query": location,
+            "filter.tags": f"urn:tag:keyword:brand:{category.lower()}"
+        }
+    elif insight_type == "demographics":
+        params = {
+            "filter.type": "urn:demographics",
+            "signal.location.query": location,
+            "signal.interests.tags": f"urn:tag:keyword:brand:{category.lower()}"
+        }
+    elif insight_type == "heatmap":
+        params = {
+            "filter.type": "urn:heatmap",
+            "filter.location.query": location,
+            "signal.interests.tags": f"urn:tag:keyword:brand:{category.lower()}"
+        }
+    else:
+        logger.error(f"Unsupported insight type: {insight_type}")
+        raise ValueError(f"Unsupported insight type: {insight_type}")
     
     try:
+        logger.info(f"Fetching {insight_type} insights for {location}/{category}")
         response = requests.get(BASE_URL, headers=headers, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
         if not data.get("success"):
+            logger.error(f"Invalid API response: {data.get('message', 'Unknown error')}")
             raise ValueError(f"Invalid API response: {data.get('message', 'Unknown error')}")
-        return {"success": True, "data": data["results"], "message": "Cultural insights retrieved successfully"}
+        
+        result = {"success": True, "data": data["results"], "message": f"{insight_type.capitalize()} insights retrieved successfully"}
+        cache[cache_key] = result
+        logger.info(f"Cached insights for {cache_key}")
+        return result
     except requests.RequestException as e:
+        logger.error(f"Qloo API request failed: {str(e)}")
         return {"success": False, "data": None, "message": f"Qloo API request failed: {str(e)}"}
+```
 ```
 
 ---
@@ -1035,39 +969,58 @@ module.exports = CircuitBreaker;
 _[Database file - 12KB]_
 
 ---
-### File: data\init_db.js
-```javascript
-const { exec } = require('child_process');
-const path = require('path');
-const fs = require('fs');
+### File: data\init_db.py
+```python
+```python
+import sqlite3
+import os
+import logging
 
-const dbPath = path.join(__dirname, 'caeser.db');
-// Get SQLite path from environment or use system default
-const sqlitePath = process.env.SQLITE_PATH || 'sqlite3';
+# Initialize logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-// Create database file only if it doesn't exist
-if (!fs.existsSync(dbPath)) {
-  fs.writeFileSync(dbPath, '');
-}
+def init_db():
+    """Initialize the SQLite database for CÆSER."""
+    db_path = os.path.join(os.path.dirname(__file__), "caeser.db")
+    
+    try:
+        # Create database file if it doesn't exist
+        if not os.path.exists(db_path):
+            open(db_path, 'a').close()
+            logger.info(f"Created database file at {db_path}")
+        
+        # Connect to database
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Create cultural_insights table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS cultural_insights (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                location TEXT NOT NULL,
+                category TEXT NOT NULL,
+                data TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Create index
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_insights ON cultural_insights(location, category)
+        """)
+        
+        conn.commit()
+        logger.info("Database initialized successfully")
+    except sqlite3.Error as e:
+        logger.error(f"Failed to initialize database: {str(e)}")
+        raise
+    finally:
+        conn.close()
 
-// Define SQL commands to create table and index if they don't exist
-const commands = [
-  `"${sqlitePath}" "${dbPath}" "CREATE TABLE IF NOT EXISTS cultural_insights (id INTEGER PRIMARY KEY AUTOINCREMENT, location TEXT NOT NULL, category TEXT NOT NULL, data TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"`,
-  `"${sqlitePath}" "${dbPath}" "CREATE INDEX IF NOT EXISTS idx_insights ON cultural_insights(location, category)"`
-];
-
-// Execute the commands
-exec(commands.join(' && '), (error, stdout, stderr) => {
-  if (error) {
-    console.error(`Error: ${error.message}`);
-    return;
-  }
-  if (stderr) {
-    console.error(`Stderr: ${stderr}`);
-    return;
-  }
-  console.log('Database initialized successfully');
-});
+if __name__ == "__main__":
+    init_db()
+```
 ```
 
 ---
@@ -3285,10 +3238,10 @@ Happy coding!
 ```markdown
 # Project Dump of D:\LAPTOP\TO_EARN\AI\CAESER
 
-**Generated:** 2025-07-25 06:31:59
+**Generated:** 2025-07-25 07:15:52
 **Max File Size:** 1MB
-**Excluded Directories:** .git, venv, node_modules, .vscode, __pycache__
-**Excluded Files:** \.log$, \.tmp$, \.exe$, \.dll$, \.bin$
+**Excluded Directories:** .git, venv, node_modules, .vscode, __pycache__, test, tests, __tests__, spec
+**Excluded Files:** \.log$, \.tmp$, \.exe$, \.dll$, \.bin$, \.txt$
 **Database Extensions:** .db, .sqlite, .sqlite3, .mdb, .accdb
 
 ---
@@ -3307,12 +3260,25 @@ DB_PATH=./data/caeser.db
 ---
 ### File: .gitignore
 ```text
+```text
 # API keys and sensitive data
 *.key
 *.env
-.env.local
+*.env.local
 secrets/
-*summary-of-pro.md
+# Configuration files
+config.json
+settings.yaml
+*.config
+# Logs
+*.log
+*.out
+*.err
+# Plans and backups
+*.plan
+*.bak
+*.backup
+docs/
 
 # IDE
 .vscode/
@@ -3323,6 +3289,8 @@ dist/
 build/
 *.tmp
 *.temp
+local.settings.json
+test-results/
 
 # Dependencies
 node_modules/
@@ -3331,6 +3299,17 @@ venv/
 # Database files
 *.db
 *.sqlite
+*.sqlite3
+*.mdb
+*.accdb
+
+# Archives
+archive/
+
+# Test outputs
+*.log
+*.pytest_cache
+```
 ```
 
 ---
@@ -3878,7 +3857,79 @@ venv/
 
 ---
 ### File: ProjectDumper.ps1
-_[Binary file - 7094 bytes]_
+_[Binary file - 7146 bytes]_
+```text
+```markdown
+# CÆSER (Cultural Affinity Simulation Engine for Retail)
+
+## Project Overview
+CÆSER is an AI system designed to predict, simulate, and strategize market behavior for e-commerce merchants through cultural intelligence and predictive analytics. It integrates Qloo's Taste AI™ API for cultural insights and DeepSeek models via OpenRouter.ai for demand forecasting and marketing strategies. The system delivers actionable insights through a Streamlit dashboard and Discord alerts.
+
+## Key Features
+- **Cultural Affinity Analysis**: Leverages Qloo API for insights into market preferences (e.g., sneaker trends in NYC).
+- **Demand Forecasting**: Predicts sales uplift using DeepSeek models.
+- **Marketing Strategies**: Generates actionable recommendations based on cultural data.
+- **Synthetic Buyer Modeling**: Simulates consumer behavior with hype scores.
+- **Visualizations**: Interactive charts (bar, heatmap, line) for insights and predictions.
+- **Discord Alerts**: Real-time notifications for predictions and strategies.
+
+## Directory Structure
+- `/api`: FastAPI backend with endpoints for insights, predictions, and alerts.
+  - `/services`: Integrations with Qloo, OpenRouter, and Discord.
+- `/data`: SQLite database and data processing scripts.
+- `/frontend`: Streamlit dashboard for user interaction and visualizations.
+- `/docs`: Documentation, including architecture and API guides.
+- `/tests`: Unit and integration tests.
+
+## Setup Instructions
+1. Clone the repository: `git clone <repo-url>`
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # Linux/Mac
+   venv\Scripts\activate  # Windows
+   ```
+3. Install dependencies: `pip install -r requirements.txt`
+4. Copy `.env.example` to `.env` and add your API keys:
+   ```text
+   QLOO_API_KEY=your_qloo_key
+   OPENROUTER_API_KEY=your_openrouter_key
+   DISCORD_WEBHOOK_URL=your_webhook_url
+   ```
+5. Initialize the database: `python data/init_db.py`
+6. Run the API: `uvicorn api.main:app --reload`
+7. Run the frontend: `streamlit run frontend/src/main.py`
+8. Access the dashboard at `http://localhost:8501`
+
+## Usage
+1. Open the Streamlit dashboard.
+2. Select a location (e.g., "New York, NY") and category (e.g., "sneakers").
+3. Choose an insight type (brand, demographics, heatmap).
+4. Enter product keywords and description.
+5. Click "Generate Insights and Predictions" to view charts and recommendations.
+6. Receive Discord alerts with results.
+
+
+## Contribution Guidelines
+- Follow PEP 8 for Python code.
+- Use `snake_case` for Python files and variables.
+- Write unit tests with `pytest` in `/tests`.
+- Document public interfaces with docstrings.
+- Submit pull requests to the `develop` branch.
+
+## Hackathon Submission
+- **Qloo Hackathon Deadline**: July 29, 2025
+- **Demo URL**: [Heroku URL]
+- **Video**: [YouTube/Vimeo link]
+- **Repository**: [GitHub URL]
+- **Description**: CÆSER leverages Qloo's Taste AI™ and DeepSeek models to deliver cultural insights and demand predictions for e-commerce merchants, demonstrated with a sneaker launch use case in NYC, achieving up to 25% uplift in conversions.
+
+## Future Plans
+- Convert to a mobile app for RevenueCat Shipaton 2025 (August 1–September 30, 2025).
+- Integrate RevenueCat SDK for subscriptions.
+- Add advanced analytics (e.g., A/B testing simulations).
+```
+```
 
 ---
 ### File: README.md
@@ -3934,263 +3985,67 @@ CÆSER is an AI system designed to predict, simulate, and strategize market beha
 ```
 
 ---
-### File: requirements.txt
-```text
-fastapi
-uvicorn
-streamlit
-requests
-retrying
-openai
-python-dotenv
-```
-
----
 ### File: api\main.py
 ```python
-# api/main.py
+```python
 from fastapi import FastAPI
 from .services import qloo_service, llm_service, discord_service, hype_engine
+import logging
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
 @app.get("/insights/{location}/{category}")
-async def get_insights(location: str, category: str):
+async def get_insights(location: str, category: str, insight_type: str = "brand"):
     """Fetch cultural insights for a location and category."""
-    return qloo_service.get_cultural_insights(location, category)
+    logger.info(f"Fetching insights for {location}/{category}/{insight_type}")
+    return qloo_service.get_cultural_insights(location, category, insight_type)
 
 @app.post("/predict/demand")
 async def predict_demand(data: dict):
     """Generate demand prediction based on product and insights."""
     product = data.get("product")
     insights = data.get("insights")
-    prediction = llm_service.get_prediction(product, insights)
-    if not prediction["success"]:
-        return prediction
-    hype_score = hype_engine.calculate_hype_score(insights)
-    discord_service.send_alert({"product": product, **prediction["data"]}, hype_score)
-    return prediction
+    logger.info(f"Generating prediction for product: {product.get('name', 'Unknown')}")
+    return llm_service.get_prediction(product, insights)
+
+@app.post("/hype/score")
+async def calculate_hype_score(data: dict):
+    """Calculate hype score based on insights."""
+    insights = data.get("insights")
+    logger.info("Calculating hype score")
+    return hype_engine.calculate_hype_score(insights)
+
+@app.post("/discord/alert")
+async def send_discord_alert(data: dict):
+    """Send Discord alert with prediction and hype score."""
+    prediction = data.get("prediction")
+    hype_data = data.get("hype_data")
+    logger.info(f"Sending Discord alert for {prediction.get('product', {}).get('name', 'Unknown')}")
+    return discord_service.send_alert(prediction, hype_data)
+```
 ```
 
 ---
 ### File: api\README.md
-```markdown
-# API Documentation
-
-## Architecture Overview
-The API is built using FastAPI and follows RESTful principles. It's organized into four main components:
-- Routes: Define API endpoints and request/response models
-- Controllers: Handle business logic and data processing
-- Models: Define data structures and database schemas
-- Services: Interface with external APIs (Qloo, OpenRouter)
-
-## Endpoints
-### Cultural Insights
-- `GET /insights/{market}/{category}` - Get cultural affinity data
-- `POST /insights/analyze` - Analyze custom data
-
-### Predictions
-- `POST /predict/demand` - Generate demand forecasts
-- `POST /predict/strategies` - Generate marketing strategies
-
-## Development Setup
-1. Install dependencies: `pip install -r requirements.txt`
-2. Set environment variables:
-   - `QLOO_API_KEY`
-   - `OPENROUTER_API_KEY`
-3. Run locally: `uvicorn main:app --reload`
-
-## Testing
-Run tests with: `pytest tests/api/`
-```
-
----
-### File: api\services\discord_service.py
+```python
 ```python
 import os
 import requests
-from datetime import datetime
-
-DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
-
-def send_alert(prediction, hype_data):
-    """Send a Discord notification with prediction and hype score details.
-    
-    Args:
-        prediction (dict): Prediction data (e.g., {'product': dict, 'uplift': float, 'strategy': str}).
-        hype_data (dict): Hype score data (e.g., {'averageScore': float}).
-    
-    Returns:
-        dict: Response with success status and message.
-    
-    Raises:
-        ValueError: If webhook URL or inputs are invalid.
-        requests.RequestException: If webhook request fails.
-    """
-    if not DISCORD_WEBHOOK_URL:
-        raise ValueError("DISCORD_WEBHOOK_URL not configured")
-    
-    if not isinstance(prediction, dict) or not all(key in prediction for key in ["product", "uplift", "strategy"]):
-        raise ValueError("Invalid prediction data")
-    if not isinstance(hype_data, dict) or "averageScore" not in hype_data:
-        raise ValueError("Invalid hype data")
-    
-    # Construct Discord embed
-    embed = {
-        "title": f"New Prediction for {prediction['product'].get('name', 'Unknown Product')}",
-        "description": f"**Category**: {prediction['product'].get('category', 'Unknown')}\n"
-                       f"**Uplift**: {prediction['uplift']:.2f}%\n"
-                       f"**Strategy**: {prediction['strategy']}\n"
-                       f"**Hype Score**: {hype_data['averageScore']:.2f}",
-        "color": 0x00ff00,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    
-    payload = {"embeds": [embed]}
-    
-    try:
-        response = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=5)
-        response.raise_for_status()
-        return {"success": True, "message": "Discord alert sent successfully"}
-    except requests.RequestException as e:
-        return {"success": False, "message": f"Failed to send Discord alert: {str(e)}"}
-```
-
----
-### File: api\services\hype_engine.py
-```python
-import random
-from typing import Dict
-
-def validate_insights(insights: Dict) -> None:
-    """Validate insights data structure.
-    
-    Args:
-        insights (dict): Cultural insights from Qloo API.
-    
-    Raises:
-        ValueError: If insights data is invalid.
-    """
-    if not isinstance(insights, dict) or not insights.get("data"):
-        raise ValueError("Invalid insights data")
-    if not isinstance(insights["data"], dict):
-        raise ValueError("Insights data must be a dictionary")
-
-def calculate_hype_score(insights: Dict) -> float:
-    """Calculate a hype score based on cultural insights with simulated consumer behavior.
-    
-    Args:
-        insights (dict): Cultural insights from Qloo API.
-    
-    Returns:
-        float: Hype score (0-100).
-    
-    Raises:
-        ValueError: If insights data is invalid.
-    """
-    validate_insights(insights)
-    
-    # Extract relevant metrics (mocked weights for simplicity)
-    affinity_score = insights["data"].get("affinity", 50.0)
-    trend_factor = insights["data"].get("trend", 1.0)
-    
-    # Simulate consumer behavior (e.g., likelihood of purchase)
-    base_score = affinity_score * trend_factor
-    simulation_noise = random.uniform(-10, 10)  # Add randomness for realism
-    
-    # Normalize to 0-100
-    hype_score = max(0.0, min(100.0, base_score + simulation_noise))
-    
-    return {"success": True, "averageScore": round(hype_score, 2), "message": "Hype score calculated"}
-```
-
----
-### File: api\services\llm_service.py
-```python
-import os
-from openai import OpenAI
+import logging
 from retrying import retry
+from cachetools import TTLCache
+from typing import Dict, Optional
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-SITE_URL = "https://caeser.example.com"  # Replace with your site URL
-SITE_NAME = "CÆSER"  # Replace with your site name
+# Initialize logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-def sanitize_input(input_data):
-    """Remove potentially harmful characters from input to prevent injection."""
-    if isinstance(input_data, str):
-        return input_data.strip().replace(r'[^\w\s,.-]', '')
-    return input_data
-
-@retry(stop_max_attempt_number=3, wait_exponential_multiplier=1000, wait_exponential_max=5000)
-def get_prediction(product, insights):
-    """Generate demand prediction and marketing strategy using OpenRouter API.
-    
-    Args:
-        product (dict): Product details (e.g., {'name': str, 'category': str, 'description': str}).
-        insights (dict): Cultural insights from Qloo API.
-    
-    Returns:
-        dict: Response with success status, data (uplift and strategy), and message.
-    
-    Raises:
-        ValueError: If API key or inputs are invalid.
-        Exception: If API call fails.
-    """
-    if not OPENROUTER_API_KEY:
-        raise ValueError("OPENROUTER_API_KEY not configured")
-    
-    if not isinstance(product, dict) or not all(key in product for key in ["name", "category", "description"]):
-        raise ValueError("Invalid product data: must include name, category, description")
-    if not isinstance(insights, dict) or not insights.get("data"):
-        raise ValueError("Invalid insights data")
-    
-    # Sanitize inputs
-    product_name = sanitize_input(product["name"])
-    product_category = sanitize_input(product["category"])
-    product_description = sanitize_input(product["description"])
-    
-    # Initialize OpenRouter client
-    client = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=OPENROUTER_API_KEY,
-    )
-    
-    # Construct prompt
-    prompt = f"""
-    Analyze the following product and cultural insights to predict demand uplift and suggest a marketing strategy.
-    Product: {product_name} ({product_category})
-    Description: {product_description}
-    Cultural Insights: {insights['data']}
-    Provide a response in JSON format with 'uplift' (percentage, float) and 'strategy' (string).
-    """
-    
-    try:
-        completion = client.chat.completions.create(
-            extra_headers={
-                "HTTP-Referer": SITE_URL,
-                "X-Title": SITE_NAME,
-            },
-            model="deepseek/deepseek-chat-v3-0324:free",
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-        result = completion.choices[0].message.content.strip()
-        import json
-        parsed_result = json.loads(result)
-        if not all(key in parsed_result for key in ["uplift", "strategy"]):
-            raise ValueError("Invalid LLM response format")
-        return {"success": True, "data": parsed_result, "message": "Prediction generated successfully"}
-    except Exception as e:
-        return {"success": False, "data": None, "message": f"LLM request failed: {str(e)}"}
-```
-
----
-### File: api\services\qloo_service.py
-```python
-import os
-import requests
-from retrying import retry
+# Initialize cache (TTL of 1 hour)
+cache = TTLCache(maxsize=100, ttl=3600)
 
 QLOO_API_KEY = os.getenv("QLOO_API_KEY")
 BASE_URL = "https://hackathon.api.qloo.com/v2/insights"
@@ -4200,22 +4055,19 @@ def sanitize_input(input_str: str) -> str:
     return input_str.strip().replace(r'[^\w\s,.-]', '')
 
 @retry(stop_max_attempt_number=3, wait_exponential_multiplier=1000, wait_exponential_max=5000)
-def get_cultural_insights(location: str, category: str) -> dict:
+def get_cultural_insights(location: str, category: str, insight_type: str = "brand") -> Dict:
     """Fetch cultural insights from Qloo API for a given location and category.
     
     Args:
         location (str): Geographic location (e.g., 'New York, NY').
         category (str): Product category (e.g., 'sneakers').
+        insight_type (str): Type of insight ('brand', 'demographics', 'heatmap'). Defaults to 'brand'.
     
     Returns:
-        dict: Response with success status, data, and message.
+        Dict: Response with success status, data, and message.
               Example: {
                   "success": bool,
-                  "data": {
-                      "entities": [...],
-                      "popularity": float,
-                      ...
-                  },
+                  "data": {...},
                   "message": str
               }
     
@@ -4224,34 +4076,69 @@ def get_cultural_insights(location: str, category: str) -> dict:
         requests.RequestException: If API call fails after retries.
     """
     if not QLOO_API_KEY:
+        logger.error("QLOO_API_KEY not configured")
         raise ValueError("QLOO_API_KEY not configured")
     if not location or not isinstance(location, str) or not location.strip():
+        logger.error("Invalid location provided")
         raise ValueError("Invalid location")
     if not category or not isinstance(category, str) or not category.strip():
+        logger.error("Invalid category provided")
         raise ValueError("Invalid category")
     
     location = sanitize_input(location)
     category = sanitize_input(category)
     
+    # Check cache
+    cache_key = f"{insight_type}:{location}:{category}"
+    if cache_key in cache:
+        logger.info(f"Returning cached insights for {cache_key}")
+        return cache[cache_key]
+    
     headers = {
         "X-Api-Key": QLOO_API_KEY,
         "Content-Type": "application/json"
     }
-    params = {
-        "filter.type": "urn:entity:brand",  # Assuming 'brand' for product categories like sneakers
-        "signal.location.query": location,
-        "filter.tags": f"urn:tag:keyword:brand:{category.lower()}"
-    }
+    
+    params = {}
+    if insight_type == "brand":
+        params = {
+            "filter.type": "urn:entity:brand",
+            "signal.location.query": location,
+            "filter.tags": f"urn:tag:keyword:brand:{category.lower()}"
+        }
+    elif insight_type == "demographics":
+        params = {
+            "filter.type": "urn:demographics",
+            "signal.location.query": location,
+            "signal.interests.tags": f"urn:tag:keyword:brand:{category.lower()}"
+        }
+    elif insight_type == "heatmap":
+        params = {
+            "filter.type": "urn:heatmap",
+            "filter.location.query": location,
+            "signal.interests.tags": f"urn:tag:keyword:brand:{category.lower()}"
+        }
+    else:
+        logger.error(f"Unsupported insight type: {insight_type}")
+        raise ValueError(f"Unsupported insight type: {insight_type}")
     
     try:
+        logger.info(f"Fetching {insight_type} insights for {location}/{category}")
         response = requests.get(BASE_URL, headers=headers, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
         if not data.get("success"):
+            logger.error(f"Invalid API response: {data.get('message', 'Unknown error')}")
             raise ValueError(f"Invalid API response: {data.get('message', 'Unknown error')}")
-        return {"success": True, "data": data["results"], "message": "Cultural insights retrieved successfully"}
+        
+        result = {"success": True, "data": data["results"], "message": f"{insight_type.capitalize()} insights retrieved successfully"}
+        cache[cache_key] = result
+        logger.info(f"Cached insights for {cache_key}")
+        return result
     except requests.RequestException as e:
+        logger.error(f"Qloo API request failed: {str(e)}")
         return {"success": False, "data": None, "message": f"Qloo API request failed: {str(e)}"}
+```
 ```
 
 ---
@@ -4320,39 +4207,58 @@ module.exports = CircuitBreaker;
 _[Database file - 12KB]_
 
 ---
-### File: data\init_db.js
-```javascript
-const { exec } = require('child_process');
-const path = require('path');
-const fs = require('fs');
+### File: data\init_db.py
+```python
+```python
+import sqlite3
+import os
+import logging
 
-const dbPath = path.join(__dirname, 'caeser.db');
-// Get SQLite path from environment or use system default
-const sqlitePath = process.env.SQLITE_PATH || 'sqlite3';
+# Initialize logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-// Create database file only if it doesn't exist
-if (!fs.existsSync(dbPath)) {
-  fs.writeFileSync(dbPath, '');
-}
+def init_db():
+    """Initialize the SQLite database for CÆSER."""
+    db_path = os.path.join(os.path.dirname(__file__), "caeser.db")
+    
+    try:
+        # Create database file if it doesn't exist
+        if not os.path.exists(db_path):
+            open(db_path, 'a').close()
+            logger.info(f"Created database file at {db_path}")
+        
+        # Connect to database
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Create cultural_insights table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS cultural_insights (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                location TEXT NOT NULL,
+                category TEXT NOT NULL,
+                data TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Create index
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_insights ON cultural_insights(location, category)
+        """)
+        
+        conn.commit()
+        logger.info("Database initialized successfully")
+    except sqlite3.Error as e:
+        logger.error(f"Failed to initialize database: {str(e)}")
+        raise
+    finally:
+        conn.close()
 
-// Define SQL commands to create table and index if they don't exist
-const commands = [
-  `"${sqlitePath}" "${dbPath}" "CREATE TABLE IF NOT EXISTS cultural_insights (id INTEGER PRIMARY KEY AUTOINCREMENT, location TEXT NOT NULL, category TEXT NOT NULL, data TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"`,
-  `"${sqlitePath}" "${dbPath}" "CREATE INDEX IF NOT EXISTS idx_insights ON cultural_insights(location, category)"`
-];
-
-// Execute the commands
-exec(commands.join(' && '), (error, stdout, stderr) => {
-  if (error) {
-    console.error(`Error: ${error.message}`);
-    return;
-  }
-  if (stderr) {
-    console.error(`Stderr: ${stderr}`);
-    return;
-  }
-  console.log('Database initialized successfully');
-});
+if __name__ == "__main__":
+    init_db()
+```
 ```
 
 ---
@@ -6571,7 +6477,8 @@ Happy coding!
 ```
 
 ---
-
+### File: frontend\README.md
+```markdown
 # Frontend Documentation
 ## Application Architecture
 The frontend is built exclusively with Streamlit for a data-driven, user-friendly dashboard. React artifacts have been archived to `/archive` to avoid confusion.
@@ -6697,34 +6604,37 @@ export default App;
 ---
 ### File: frontend\src\main.py
 ```python
-# frontend/src/main.py
+```python
 import streamlit as st
 import requests
 import json
 import plotly.express as px
+import plotly.graph_objects as go
 import pandas as pd
+import logging
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Configuration
 API_BASE_URL = "http://localhost:8000"  # Update to Heroku URL after deployment
 st.set_page_config(page_title="CÆSER Dashboard", layout="wide")
 
-# Custom CSS for responsiveness and theme
+# Custom CSS
 st.markdown("""
     <style>
-        /* BEM naming convention */
         .market-selector__dropdown { margin-bottom: 1rem; }
         .insight-visualizer__chart { max-width: 100%; }
         .prediction-dashboard__container { padding: 1rem; background-color: #f9f9f9; border-radius: 8px; }
         .product-keywords__input { width: 100%; }
         .product-description__textarea { width: 100%; min-height: 100px; }
-        /* Mobile responsiveness */
         @media (max-width: 768px) {
             .market-selector__dropdown { font-size: 14px; }
             .insight-visualizer__chart { height: 300px; }
         }
-        /* Theme variables */
         :root {
-            --primary-color: #1a73e8;
+            --primary-color: #667eea;
             --text-color: #333;
         }
         .stButton>button { background-color: var(--primary-color); color: white; }
@@ -6736,60 +6646,96 @@ def market_selector():
     st.subheader("Select Market and Category")
     col1, col2 = st.columns(2)
     with col1:
-        location = st.selectbox("Location", ["New York, NY", "London", "Tokyo"], key="location", help="Choose a target market")
+        location = st.selectbox("Location", ["New York, NY", "London", "Tokyo"], key="location")
     with col2:
-        category = st.selectbox("Category", ["sneakers", "electronics", "fashion"], key="category", help="Choose a product category")
-    return location, category
+        category = st.selectbox("Category", ["sneakers", "electronics", "fashion"], key="category")
+    insight_type = st.selectbox("Insight Type", ["brand", "demographics", "heatmap"], key="insight_type")
+    return location, category, insight_type
 
 # ProductKeywords Component
 def product_keywords():
     st.subheader("Product Keywords")
-    keywords = st.text_input("Enter keywords (comma-separated)", help="e.g., sneakers, streetwear, limited edition")
+    keywords = st.text_input("Enter keywords (comma-separated)", help="e.g., sneakers, streetwear")
     return [k.strip() for k in keywords.split(",") if k.strip()] if keywords else []
 
 # ProductDescription Component
 def product_description():
     st.subheader("Product Description")
-    description = st.text_area("Enter product description", help="Provide a detailed description of the product")
+    description = st.text_area("Enter product description")
     return description.strip() if description else ""
 
 # InsightVisualizer Component
-def insight_visualizer(insights):
+def insight_visualizer(insights, insight_type):
     st.subheader("Cultural Insights")
     if not insights or not insights.get("success"):
         st.error("Failed to fetch cultural insights. Please try again.")
         return
+    
     try:
-        # Example: Plot affinity scores
-        data = insights["data"]["results"]["entities"]
-        df = pd.DataFrame([
-            {"trait": entity["name"], "score": entity["properties"]["popularity"]}
-            for entity in data
-        ])
-        fig = px.bar(df, x="trait", y="score", title="Cultural Affinity Scores")
-        st.plotly_chart(fig, use_container_width=True)
+        entities = insights["data"].get("entities", [])
+        if insight_type == "brand":
+            df = pd.DataFrame([
+                {"trait": entity["name"], "score": entity["properties"].get("popularity", 0.5)}
+                for entity in entities
+            ])
+            fig = px.bar(df, x="trait", y="score", title="Cultural Affinity Scores",
+                         color_discrete_sequence=["#667eea"])
+            st.plotly_chart(fig, use_container_width=True)
+        
+        elif insight_type == "demographics":
+            df = pd.DataFrame([
+                {"age_group": entity.get("age_group", "Unknown"), "affinity": entity.get("affinity_score", 0.5)}
+                for entity in entities
+            ])
+            fig = px.bar(df, x="age_group", y="affinity", title="Demographic Affinity",
+                         color_discrete_sequence=["#764ba2"])
+            st.plotly_chart(fig, use_container_width=True)
+        
+        elif insight_type == "heatmap":
+            # Mock heatmap data (replace with real Qloo heatmap data if available)
+            z = [[0.8, 0.6, 0.9], [0.7, 0.85, 0.75], [0.9, 0.8, 0.95]]
+            fig = go.Figure(data=go.Heatmap(
+                z=z,
+                x=["North America", "Europe", "Asia"],
+                y=["Fashion", "Electronics", "Home"],
+                colorscale="Viridis"
+            ))
+            fig.update_layout(title="Regional Affinity Heatmap")
+            st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
+        logger.error(f"Error rendering insights: {str(e)}")
         st.error(f"Error rendering insights: {str(e)}")
 
 # PredictionDashboard Component
-def prediction_dashboard(predictions):
+def prediction_dashboard(predictions, hype_score):
     st.subheader("Demand Predictions and Strategies")
-    if not predictions or predictions.get("uplift") == "Unknown":
+    if not predictions or not predictions.get("success"):
         st.error("Failed to generate predictions. Please try again.")
         return
+    
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Demand Uplift", predictions.get("uplift", "Unknown"))
+        st.metric("Demand Uplift", f"{predictions['data'].get('uplift', 'Unknown')}%")
+        st.metric("Hype Score", f"{hype_score.get('averageScore', 'Unknown')}")
     with col2:
         st.write("**Recommended Strategy**")
-        st.write(predictions.get("strategy", "Unknown"))
+        st.write(predictions["data"].get("strategy", "Unknown"))
+    
+    # Demand Line Chart
+    df = pd.DataFrame({
+        "Month": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+        "Demand": [120, 190, 300, 500, 200, 300]
+    })
+    fig = px.line(df, x="Month", y="Demand", title="Demand Trends",
+                  color_discrete_sequence=["#667eea"])
+    st.plotly_chart(fig, use_container_width=True)
 
 # Main App Logic
 def main():
     st.title("CÆSER: Cultural Affinity Simulation Engine for Retail")
     
     # Collect inputs
-    location, category = market_selector()
+    location, category, insight_type = market_selector()
     keywords = product_keywords()
     description = product_description()
     
@@ -6799,16 +6745,18 @@ def main():
             try:
                 # Fetch cultural insights
                 insights_response = requests.get(
-                    f"{API_BASE_URL}/insights/{location}/{category}",
+                    f"{API_BASE_URL}/insights/{location}/{category}?insight_type={insight_type}",
                     timeout=10
                 )
                 insights = insights_response.json() if insights_response.status_code == 200 else {}
                 
                 # Fetch predictions
-                prediction_payload = {
-                    "product": f"{category} ({', '.join(keywords)}): {description}",
-                    "insights": insights.get("data", {})
+                product = {
+                    "name": ", ".join(keywords) or category,
+                    "category": category,
+                    "description": description or f"{category} product"
                 }
+                prediction_payload = {"product": product, "insights": insights}
                 prediction_response = requests.post(
                     f"{API_BASE_URL}/predict/demand",
                     json=prediction_payload,
@@ -6816,32 +6764,43 @@ def main():
                 )
                 predictions = prediction_response.json() if prediction_response.status_code == 200 else {}
                 
+                # Calculate hype score
+                hype_score = requests.post(
+                    f"{API_BASE_URL}/hype/score",
+                    json={"insights": insights},
+                    timeout=10
+                ).json()
+                
                 # Display results
-                insight_visualizer(insights)
-                prediction_dashboard(predictions)
+                insight_visualizer(insights, insight_type)
+                prediction_dashboard(predictions, hype_score)
                 
                 # Send Discord alert
-                discord_payload = {"prediction": predictions, "insights": insights}
-                requests.post(f"{API_BASE_URL}/discord/alert", json=discord_payload)
+                discord_payload = {"prediction": {"product": product, **predictions.get("data", {})}, "hype_data": hype_score}
+                requests.post(f"{API_BASE_URL}/discord/alert", json=discord_payload, timeout=5)
                 
             except requests.RequestException as e:
+                logger.error(f"API request failed: {str(e)}")
                 st.error(f"API request failed: {str(e)}")
             except Exception as e:
+                logger.error(f"An error occurred: {str(e)}")
                 st.error(f"An error occurred: {str(e)}")
 
 if __name__ == "__main__":
     main()
 ```
+```
+
 
 ---
 
 ## Summary Statistics
-- **Total Files Found:** 42
-- **Successfully Processed:** 38
+- **Total Files Found:** 37
+- **Successfully Processed:** 33
 - **Skipped (Database Files):** 1
 - **Skipped (Binary):** 3
 - **Skipped (Too Large):** 0
 - **Skipped (Errors):** 0
 - **Total Skipped:** 4
 
-**Completion:** 2025-07-25 06:32:30
+**Completion:** 2025-07-25 07:16:19
