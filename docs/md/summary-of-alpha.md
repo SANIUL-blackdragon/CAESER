@@ -1,9 +1,9 @@
 # Project Dump of D:\LAPTOP\TO_EARN\AI\CAESER
 
-**Generated:** 2025-07-25 07:15:52
+**Generated:** 2025-07-25 10:14:20
 **Max File Size:** 1MB
-**Excluded Directories:** .git, venv, node_modules, .vscode, __pycache__, test, tests, __tests__, spec
-**Excluded Files:** \.log$, \.tmp$, \.exe$, \.dll$, \.bin$, \.txt$
+**Excluded Directories:** .git, venv, node_modules, .vscode, __pycache__, test, tests, __tests__, spec, config, configs, configuration, settings
+**Excluded Files:** \.log$, \.tmp$, \.exe$, \.dll$, \.bin$, \.txt$, \.config$, \.conf$, \.cfg$, \.ini$, \.settings$, \.bak$, \.swp$, \.swo$, \.old$, \.orig$, \.patch$, \.diff$, \.md5$, \.sha1$, \.sha256$, \.json
 **Database Extensions:** .db, .sqlite, .sqlite3, .mdb, .accdb
 
 ---
@@ -596,30 +596,26 @@ archive/
 ```
 
 ---
-### File: package.json
-```json
-{
-  "name": "caeser",
-  "version": "1.0.0",
-  "description": "CÆSER is an AI system designed to predict, simulate, and strategize market behavior for e-commerce merchants through cultural intelligence and predictive analytics. The system integrates Qloo's Taste AI™ API for cultural insights and DeepSeek/Kimi models via OpenRouter.ai for predictive analytics.",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs",
-    "test": "tests"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
-}
+### File: eslint.config.mjs
+```text
+import js from "@eslint/js";
+import globals from "globals";
+import pluginReact from "eslint-plugin-react";
+import { defineConfig } from "eslint/config";
+
+export default defineConfig([
+  { files: ["**/*.{js,mjs,cjs,jsx}"], plugins: { js }, extends: ["js/recommended"], languageOptions: { globals: globals.browser } },
+  pluginReact.configs.flat.recommended,
+]);
 
 ```
 
 ---
 ### File: ProjectDumper.ps1
-_[Binary file - 7146 bytes]_
+_[Binary file - 7333 bytes]_
+
+---
+### File: README.markdown
 ```text
 ```markdown
 # CÆSER (Cultural Affinity Simulation Engine for Retail)
@@ -749,7 +745,8 @@ CÆSER is an AI system designed to predict, simulate, and strategize market beha
 ---
 ### File: api\main.py
 ```python
-```python
+from api.utils.logging import setup_logging
+logger = setup_logging()
 from fastapi import FastAPI
 from .services import qloo_service, llm_service, discord_service, hype_engine
 import logging
@@ -788,12 +785,278 @@ async def send_discord_alert(data: dict):
     hype_data = data.get("hype_data")
     logger.info(f"Sending Discord alert for {prediction.get('product', {}).get('name', 'Unknown')}")
     return discord_service.send_alert(prediction, hype_data)
-```
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    logger.info("Health check endpoint called")
+    return {"status": "ok"}
+logger.info('Test log message from api/main.py')
 ```
 
 ---
 ### File: api\README.md
+```markdown
+# API Documentation
+
+## Architecture Overview
+The API is built using FastAPI and follows RESTful principles. It's organized into four main components:
+- Routes: Define API endpoints and request/response models
+- Controllers: Handle business logic and data processing
+- Models: Define data structures and database schemas
+- Services: Interface with external APIs (Qloo, OpenRouter)
+
+## Endpoints
+### Cultural Insights
+- `GET /insights/{market}/{category}` - Get cultural affinity data
+- `POST /insights/analyze` - Analyze custom data
+
+### Predictions
+- `POST /predict/demand` - Generate demand forecasts
+- `POST /predict/strategies` - Generate marketing strategies
+
+## Development Setup
+1. Install dependencies: `pip install -r requirements.txt`
+2. Set environment variables:
+   - `QLOO_API_KEY`
+   - `OPENROUTER_API_KEY`
+3. Run locally: `uvicorn main:app --reload`
+
+## Testing
+Run tests with: `pytest tests/api/`
+```
+
+---
+### File: api\services\discord_service.py
 ```python
+import os
+import requests
+from datetime import datetime
+import logging
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+
+def send_alert(prediction, hype_data):
+    """Send a Discord notification with prediction and hype score details.
+    
+    Args:
+        prediction (dict): Prediction data (e.g., {'product': dict, 'uplift': float, 'strategy': str}).
+        hype_data (dict): Hype score data (e.g., {'averageScore': float}).
+    
+    Returns:
+        dict: Response with success status and message.
+    
+    Raises:
+        ValueError: If webhook URL or inputs are invalid.
+        requests.RequestException: If webhook request fails.
+    """
+    if not DISCORD_WEBHOOK_URL:
+        logger.error("DISCORD_WEBHOOK_URL not configured")
+        raise ValueError("DISCORD_WEBHOOK_URL not configured")
+    
+    if not isinstance(prediction, dict) or not all(key in prediction for key in ["product", "uplift", "strategy"]):
+        logger.error("Invalid prediction data")
+        raise ValueError("Invalid prediction data")
+    if not isinstance(hype_data, dict) or "averageScore" not in hype_data:
+        logger.error("Invalid hype data")
+        raise ValueError("Invalid hype data")
+    
+    # Construct Discord embed
+    embed = {
+        "title": f"New Prediction for {prediction['product'].get('name', 'Unknown Product')}",
+        "description": (
+            f"**Category**: {prediction['product'].get('category', 'Unknown')}\n"
+            f"**Uplift**: {prediction['uplift']:.2f}%\n"
+            f"**Strategy**: {prediction['strategy']}\n"
+            f"**Hype Score**: {hype_data['averageScore']:.2f}\n"
+            f"**Timestamp**: {datetime.utcnow().isoformat()}"
+        ),
+        "color": 0x667eea,  # Match caeser_visuals.html gradient
+        "footer": {"text": "CÆSER System"},
+        "fields": [
+            {"name": "Insights Source", "value": "Qloo Taste AI™", "inline": True},
+            {"name": "Prediction Source", "value": "OpenRouter (DeepSeek)", "inline": True}
+        ]
+    }
+    
+    payload = {"embeds": [embed]}
+    
+    try:
+        logger.info(f"Sending Discord alert for {prediction['product'].get('name', 'Unknown Product')}")
+        response = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=5)
+        response.raise_for_status()
+        logger.info("Discord alert sent successfully")
+        return {"success": True, "message": "Discord alert sent successfully"}
+    except requests.RequestException as e:
+        logger.error(f"Failed to send Discord alert: {str(e)}")
+        return {"success": False, "message": f"Failed to send Discord alert: {str(e)}"}
+```
+
+---
+### File: api\services\hype_engine.py
+```python
+import random
+from typing import Dict
+import logging
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def validate_insights(insights: Dict) -> None:
+    """Validate insights data structure.
+    
+    Args:
+        insights (dict): Cultural insights from Qloo API.
+    
+    Raises:
+        ValueError: If insights data is invalid.
+    """
+    if not isinstance(insights, dict) or not insights.get("data"):
+        logger.error("Invalid insights data")
+        raise ValueError("Invalid insights data")
+    if not isinstance(insights["data"], dict):
+        logger.error("Insights data must be a dictionary")
+        raise ValueError("Insights data must be a dictionary")
+
+def calculate_hype_score(insights: Dict) -> Dict:
+    """Calculate a hype score based on cultural insights with simulated consumer behavior.
+    
+    Args:
+        insights (dict): Cultural insights from Qloo API.
+    
+    Returns:
+        Dict: Hype score (0-100) with success status and message.
+    
+    Raises:
+        ValueError: If insights data is invalid.
+    """
+    validate_insights(insights)
+    
+    try:
+        # Extract popularity from Qloo API entities
+        entities = insights["data"].get("entities", [])
+        if not entities:
+            logger.warning("No entities found in insights data, using default popularity")
+            popularity = 0.5
+        else:
+            popularity = sum(entity["properties"].get("popularity", 0.5) for entity in entities) / len(entities)
+        
+        # Simulate trend factor (could be enhanced with bias.trends from Qloo API)
+        trend_factor = insights["data"].get("trend", 1.0)
+        
+        # Calculate base score
+        base_score = popularity * 100 * trend_factor
+        simulation_noise = random.uniform(-10, 10)  # Add randomness for realism
+        
+        # Normalize to 0-100
+        hype_score = max(0.0, min(100.0, base_score + simulation_noise))
+        
+        logger.info(f"Calculated hype score: {hype_score:.2f}")
+        return {"success": True, "averageScore": round(hype_score, 2), "message": "Hype score calculated"}
+    except Exception as e:
+        logger.error(f"Failed to calculate hype score: {str(e)}")
+        return {"success": False, "averageScore": 0.0, "message": f"Failed to calculate hype score: {str(e)}"}
+```
+
+---
+### File: api\services\llm_service.py
+```python
+import os
+from openai import OpenAI
+from retrying import retry
+import logging
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+SITE_URL = "https://caeser.example.com"
+SITE_NAME = "CÆSER"
+
+def sanitize_input(input_data):
+    """Remove potentially harmful characters from input to prevent injection."""
+    if isinstance(input_data, str):
+        return input_data.strip().replace(r'[^\w\s,.-]', '')
+    return input_data
+
+@retry(stop_max_attempt_number=3, wait_exponential_multiplier=1000, wait_exponential_max=5000)
+def get_prediction(product, insights):
+    """Generate demand prediction and marketing strategy using OpenRouter API.
+    
+    Args:
+        product (dict): Product details (e.g., {'name': str, 'category': str, 'description': str}).
+        insights (dict): Cultural insights from Qloo API.
+    
+    Returns:
+        dict: Response with success status, data (uplift and strategy), and message.
+    
+    Raises:
+        ValueError: If API key or inputs are invalid.
+        Exception: If API call fails.
+    """
+    if not OPENROUTER_API_KEY:
+        logger.error("OPENROUTER_API_KEY not configured")
+        raise ValueError("OPENROUTER_API_KEY not configured")
+    
+    if not isinstance(product, dict) or not all(key in product for key in ["name", "category", "description"]):
+        logger.error("Invalid product data: must include name, category, description")
+        raise ValueError("Invalid product data: must include name, category, description")
+    if not isinstance(insights, dict) or not insights.get("data"):
+        logger.error("Invalid insights data")
+        raise ValueError("Invalid insights data")
+    
+    # Sanitize inputs
+    product_name = sanitize_input(product["name"])
+    product_category = sanitize_input(product["category"])
+    product_description = sanitize_input(product["description"])
+    
+    # Initialize OpenRouter client
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=OPENROUTER_API_KEY,
+    )
+    
+    # Construct prompt
+    prompt = f"""
+    Analyze the following product and cultural insights to predict demand uplift and suggest a marketing strategy.
+    Product: {product_name} ({product_category})
+    Description: {product_description}
+    Cultural Insights: {insights['data']}
+    Provide a response in JSON format with 'uplift' (percentage, float) and 'strategy' (string).
+    """
+    
+    try:
+        logger.info(f"Generating prediction for {product_name}")
+        completion = client.chat.completions.create(
+            extra_headers={
+                "HTTP-Referer": SITE_URL,
+                "X-Title": SITE_NAME,
+            },
+            model="deepseek/deepseek-chat-v3-0324:free",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        result = completion.choices[0].message.content.strip()
+        import json
+        parsed_result = json.loads(result)
+        if not all(key in parsed_result for key in ["uplift", "strategy"]):
+            logger.error("Invalid LLM response format")
+            raise ValueError("Invalid LLM response format")
+        logger.info(f"Prediction generated successfully for {product_name}")
+        return {"success": True, "data": parsed_result, "message": "Prediction generated successfully"}
+    except Exception as e:
+        logger.error(f"LLM request failed: {str(e)}")
+        return {"success": False, "data": None, "message": f"LLM request failed: {str(e)}"}
+```
+
+---
+### File: api\services\qloo_service.py
 ```python
 import os
 import requests
@@ -901,10 +1164,30 @@ def get_cultural_insights(location: str, category: str, insight_type: str = "bra
         logger.error(f"Qloo API request failed: {str(e)}")
         return {"success": False, "data": None, "message": f"Qloo API request failed: {str(e)}"}
 ```
+
+---
+### File: api\utils\logging.py
+```python
+import logging
+
+def setup_logging(name: str = __name__, level: int = logging.INFO) -> logging.Logger:
+    """Configure and return a logger instance.
+    Args:
+        name (str): Logger name (defaults to module name).
+        level (int): Logging level (defaults to INFO).
+    Returns:
+        logging.Logger: Configured logger instance.
+    """
+    logging.basicConfig(
+        level=level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    return logging.getLogger(name)
 ```
 
 ---
-### File: api\utils\circuitBreaker.js
+### File: archive\circuitBreaker.js
 ```javascript
 class CircuitBreaker {
   constructor({ failureThreshold = 3, successThreshold = 2, timeout = 10000 }) {
@@ -971,6 +1254,9 @@ _[Database file - 12KB]_
 ---
 ### File: data\init_db.py
 ```python
+from api.utils.logging import setup_logging
+logger = setup_logging()
+
 ```python
 import sqlite3
 import os
@@ -1021,6 +1307,7 @@ def init_db():
 if __name__ == "__main__":
     init_db()
 ```
+
 ```
 
 ---
@@ -2213,367 +2500,6 @@ It is feasible to build an MVP for CÆSER within 5 days to compete for the Qloo 
 - [Qloo Taste AI™ Technology](https://www.qloo.com/technology/taste-ai)
 - [RevenueCat Shipaton 2025](https://revenuecat-shipaton-2025.devpost.com/)
 - [RevenueCat Shipaton Rules](https://revenuecat-shipaton-2025.devpost.com/rules)
-```
-
----
-### File: docs\md\caeser_visuals.markdown
-```text
----
-scripts:
-  - https://cdn.jsdelivr.net/npm/chart.js
-  - https://cdn.plot.ly/plotly-2.35.2.min.js
----
-
-# CÆSER System Visualizations
-
-This document provides a comprehensive visual representation of the CÆSER (Cultural Affinity Simulation Engine for Retail) system, including its architecture, components, and data insights. The visuals are coded using Mermaid for diagrams and Chart.js/Plotly for charts, with sample data for illustration.
-
-## Required Extensions
-- **Markdown Preview Enhanced**: Install this VS Code extension to render Mermaid diagrams and Chart.js/Plotly charts.
-
-**Instructions for Viewing:**
-1. Install the "Markdown Preview Enhanced" extension in VS Code.
-2. Open this file (`caeser_visuals.md`) in VS Code.
-3. Use the preview feature (`Ctrl+Shift+V` or `Cmd+Shift+V` on Mac) to render the visuals.
-4. Ensure internet access to load external scripts (Chart.js, Plotly).
-
----
-
-## Table of Contents
-- [Overall System Architecture](#overall-system-architecture)
-  - [Flow Chart](#flow-chart)
-  - [Sequence Diagram](#sequence-diagram)
-- [Cultural Affinity Analysis](#cultural-affinity-analysis)
-  - [Bar Chart](#bar-chart)
-  - [Heat Map](#heat-map)
-  - [Network Graph](#network-graph)
-- [Demand Forecasting](#demand-forecasting)
-  - [Line Chart](#line-chart)
-  - [Area Chart](#area-chart)
-  - [Box Plot](#box-plot)
-- [Marketing Strategies](#marketing-strategies)
-  - [Pie Chart](#pie-chart)
-  - [Sankey Diagram](#sankey-diagram)
-  - [Decision Tree](#decision-tree)
-- [Synthetic Buyer Modeling](#synthetic-buyer-modeling)
-  - [Radar Chart](#radar-chart)
-  - [Scatter Plot](#scatter-plot)
-  - [Histogram](#histogram)
-- [Additional Visuals](#additional-visuals)
-  - [Gantt Chart](#gantt-chart)
-
----
-
-## Overall System Architecture
-
-### Flow Chart
-*Description*: Shows the step-by-step data flow between CÆSER system modules.
-
-```mermaid
-graph LR
-    A[User] --> B[Frontend]
-    B --> C[API]
-    C --> D[Data Processing]
-    D --> E[Qloo API]
-    D --> F[OpenRouter API]
-    D --> G[Database]
-    C --> H[Services]
-    H --> I[Discord Service]
-    B --> J[Dashboard UI]
-```
-
-### Sequence Diagram
-*Description*: Depicts the sequence of operations during a user request.
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant F as Frontend
-    participant A as API
-    participant D as Data Processing
-    participant Q as Qloo API
-    participant O as OpenRouter API
-    participant DB as Database
-    participant S as Services
-    participant DS as Discord Service
-    participant UI as Dashboard UI
-
-    U->>F: Select market/product
-    F->>A: Request insights
-    A->>D: Process request
-    D->>Q: Fetch cultural data
-    Q-->>D: Return affinity scores
-    D->>O: Generate predictions
-    O-->>D: Return predictions
-    D->>DB: Store data
-    D-->>A: Send processed data
-    A-->>F: Return insights/predictions
-    F->>UI: Display visualizations
-    S->>DS: Send Discord alert
-```
-
----
-
-## Cultural Affinity Analysis
-
-### Bar Chart
-*Description*: Compares affinity scores across cultural traits.
-
-```html
-<canvas id="affinityBarChart" width="400" height="200"></canvas>
-<script>
-var ctx = document.getElementById('affinityBarChart').getContext('2d');
-var chart = new Chart(ctx, {
-  type: 'bar',
-  data: {
-    labels: ['Trait 1', 'Trait 2', 'Trait 3'],
-    datasets: [{
-      label: 'Affinity Scores',
-      data: [0.8, 0.6, 0.9],
-      backgroundColor: ['rgba(255, 99, 132, 0.2)', 'rgba(54, 162, 235, 0.2)', 'rgba(255, 206, 86, 0.2)'],
-      borderColor: ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)'],
-      borderWidth: 1
-    }]
-  },
-  options: { scales: { y: { beginAtZero: true, title: { display: true, text: 'Score' } } } }
-});
-</script>
-```
-
-### Heat Map
-*Description*: Shows affinity intensity across regions and categories.
-
-```html
-<div id="affinityHeatMap"></div>
-<script>
-var data = [{
-  z: [[1, 20, 30], [20, 1, 60], [30, 60, 1]],
-  x: ['Region 1', 'Region 2', 'Region 3'],
-  y: ['Category A', 'Category B', 'Category C'],
-  type: 'heatmap'
-}];
-Plotly.newPlot('affinityHeatMap', data);
-</script>
-```
-
-### Network Graph
-*Description*: Illustrates relationships between cultural traits.
-
-```mermaid
-graph TD
-    A[Trait 1] --> B[Trait 2]
-    A --> C[Trait 3]
-    B --> D[Trait 4]
-    C --> D
-```
-
----
-
-## Demand Forecasting
-
-### Line Chart
-*Description*: Tracks demand trends over time.
-
-```html
-<canvas id="demandLineChart" width="400" height="200"></canvas>
-<script>
-var ctx = document.getElementById('demandLineChart').getContext('2d');
-var chart = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr'],
-    datasets: [{
-      label: 'Demand',
-      data: [10, 20, 15, 25],
-      borderColor: 'rgba(75, 192, 192, 1)',
-      tension: 0.1
-    }]
-  }
-});
-</script>
-```
-
-### Area Chart
-*Description*: Emphasizes cumulative demand over time.
-
-```html
-<canvas id="demandAreaChart" width="400" height="200"></canvas>
-<script>
-var ctx = document.getElementById('demandAreaChart').getContext('2d');
-var chart = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr'],
-    datasets: [{
-      label: 'Cumulative Demand',
-      data: [10, 30, 45, 70],
-      fill: true,
-      backgroundColor: 'rgba(75, 192, 192, 0.2)',
-      borderColor: 'rgba(75, 192, 192, 1)'
-    }]
-  }
-});
-</script>
-```
-
-### Box Plot
-*Description*: Shows the distribution of forecasted demand.
-
-```html
-<div id="demandBoxPlot"></div>
-<script>
-var data = [{
-  y: [10, 20, 30, 40, 50],
-  type: 'box'
-}];
-Plotly.newPlot('demandBoxPlot', data);
-</script>
-```
-
----
-
-## Marketing Strategies
-
-### Pie Chart
-*Description*: Shows resource allocation across strategies.
-
-```mermaid
-pie title Resource Allocation
-    "Social Media" : 40
-    "Email Campaign" : 30
-    "Influencer Marketing" : 30
-```
-
-### Sankey Diagram
-*Description*: Illustrates the flow of strategy effectiveness.
-
-```mermaid
-sankey-beta
-Social Media,Engagement,100
-Email Campaign,Conversions,50
-Influencer Marketing,Awareness,80
-Engagement,Sales,60
-Conversions,Sales,40
-Awareness,Sales,20
-```
-
-### Decision Tree
-*Description*: Visualizes the decision-making process for strategy selection.
-
-```mermaid
-graph TD
-    A[Start] --> B{Is budget > $10k?}
-    B -->|Yes| C[Influencer Marketing]
-    B -->|No| D{Is audience young?}
-    D -->|Yes| E[Social Media]
-    D -->|No| F[Email Campaign]
-```
-
----
-
-## Synthetic Buyer Modeling
-
-### Radar Chart
-*Description*: Displays multi-dimensional hype scores for buyer personas.
-
-```html
-<canvas id="buyerRadarChart" width="400" height="400"></canvas>
-<script>
-var ctx = document.getElementById('buyerRadarChart').getContext('2d');
-var chart = new Chart(ctx, {
-  type: 'radar',
-  data: {
-    labels: ['Excitement', 'Loyalty', 'Engagement'],
-    datasets: [{
-      label: 'Persona 1',
-      data: [80, 60, 90],
-      backgroundColor: 'rgba(54, 162, 235, 0.2)',
-      borderColor: 'rgba(54, 162, 235, 1)'
-    }]
-  }
-});
-</script>
-```
-
-### Scatter Plot
-*Description*: Clusters buyer personas by characteristics.
-
-```html
-<canvas id="buyerScatterPlot" width="400" height="200"></canvas>
-<script>
-var ctx = document.getElementById('buyerScatterPlot').getContext('2d');
-var chart = new Chart(ctx, {
-  type: 'scatter',
-  data: {
-    datasets: [{
-      label: 'Personas',
-      data: [{x: 25, y: 50000}, {x: 35, y: 75000}, {x: 45, y: 100000}],
-      backgroundColor: 'rgba(54, 162, 235, 0.5)'
-    }]
-  },
-  options: {
-    scales: {
-      x: { title: { display: true, text: 'Age' } },
-      y: { title: { display: true, text: 'Income' } }
-    }
-  }
-});
-</script>
-```
-
-### Histogram
-*Description*: Shows the distribution of hype scores.
-
-```html
-<canvas id="hypeHistogram" width="400" height="200"></canvas>
-<script>
-var ctx = document.getElementById('hypeHistogram').getContext('2d');
-var chart = new Chart(ctx, {
-  type: 'bar',
-  data: {
-    labels: ['0.0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1.0'],
-    datasets: [{
-      label: 'Frequency',
-      data: [10, 15, 20, 25, 30],
-      backgroundColor: 'rgba(54, 162, 235, 0.2)',
-      borderColor: 'rgba(54, 162, 235, 1)',
-      borderWidth: 1
-    }]
-  },
-  options: { scales: { y: { beginAtZero: true } } }
-});
-</script>
-```
-
----
-
-## Additional Visuals
-
-### Gantt Chart
-*Description*: Visualizes the CÆSER project timeline.
-
-```mermaid
-gantt
-    title CÆSER Project Timeline
-    dateFormat  YYYY-MM-DD
-    section Setup
-    API Keys & Setup :a1, 2025-07-19, 1d
-    Qloo Integration :after a1, 1d
-    section Development
-    LLM Integration :2025-07-21, 1d
-    Buyer Modeling :after a2, 1d
-    Forecasting :after a3, 1d
-    section Deployment
-    Testing :2025-07-24, 1d
-    Submission :after a4, 1d
-```
-
----
-
-## Notes
-- **Sample Data**: The visuals use placeholder data (e.g., affinity scores, demand values). Replace with actual CÆSER system data for real insights.
-- **Adaptability**: Each chart/diagram can be modified by updating the data or labels to reflect specific system outputs.
-- **Rendering**: Ensure the Markdown Preview Enhanced extension is active to view the visuals. Mermaid diagrams render natively, while Chart.js/Plotly require the scripts loaded in the front matter.
 ```
 
 ---
@@ -3238,10 +3164,10 @@ Happy coding!
 ```markdown
 # Project Dump of D:\LAPTOP\TO_EARN\AI\CAESER
 
-**Generated:** 2025-07-25 07:15:52
+**Generated:** 2025-07-25 10:14:20
 **Max File Size:** 1MB
-**Excluded Directories:** .git, venv, node_modules, .vscode, __pycache__, test, tests, __tests__, spec
-**Excluded Files:** \.log$, \.tmp$, \.exe$, \.dll$, \.bin$, \.txt$
+**Excluded Directories:** .git, venv, node_modules, .vscode, __pycache__, test, tests, __tests__, spec, config, configs, configuration, settings
+**Excluded Files:** \.log$, \.tmp$, \.exe$, \.dll$, \.bin$, \.txt$, \.config$, \.conf$, \.cfg$, \.ini$, \.settings$, \.bak$, \.swp$, \.swo$, \.old$, \.orig$, \.patch$, \.diff$, \.md5$, \.sha1$, \.sha256$, \.json
 **Database Extensions:** .db, .sqlite, .sqlite3, .mdb, .accdb
 
 ---
@@ -3834,30 +3760,26 @@ archive/
 ```
 
 ---
-### File: package.json
-```json
-{
-  "name": "caeser",
-  "version": "1.0.0",
-  "description": "CÆSER is an AI system designed to predict, simulate, and strategize market behavior for e-commerce merchants through cultural intelligence and predictive analytics. The system integrates Qloo's Taste AI™ API for cultural insights and DeepSeek/Kimi models via OpenRouter.ai for predictive analytics.",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs",
-    "test": "tests"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
-}
+### File: eslint.config.mjs
+```text
+import js from "@eslint/js";
+import globals from "globals";
+import pluginReact from "eslint-plugin-react";
+import { defineConfig } from "eslint/config";
+
+export default defineConfig([
+  { files: ["**/*.{js,mjs,cjs,jsx}"], plugins: { js }, extends: ["js/recommended"], languageOptions: { globals: globals.browser } },
+  pluginReact.configs.flat.recommended,
+]);
 
 ```
 
 ---
 ### File: ProjectDumper.ps1
-_[Binary file - 7146 bytes]_
+_[Binary file - 7333 bytes]_
+
+---
+### File: README.markdown
 ```text
 ```markdown
 # CÆSER (Cultural Affinity Simulation Engine for Retail)
@@ -3987,7 +3909,8 @@ CÆSER is an AI system designed to predict, simulate, and strategize market beha
 ---
 ### File: api\main.py
 ```python
-```python
+from api.utils.logging import setup_logging
+logger = setup_logging()
 from fastapi import FastAPI
 from .services import qloo_service, llm_service, discord_service, hype_engine
 import logging
@@ -4026,12 +3949,278 @@ async def send_discord_alert(data: dict):
     hype_data = data.get("hype_data")
     logger.info(f"Sending Discord alert for {prediction.get('product', {}).get('name', 'Unknown')}")
     return discord_service.send_alert(prediction, hype_data)
-```
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    logger.info("Health check endpoint called")
+    return {"status": "ok"}
+logger.info('Test log message from api/main.py')
 ```
 
 ---
 ### File: api\README.md
+```markdown
+# API Documentation
+
+## Architecture Overview
+The API is built using FastAPI and follows RESTful principles. It's organized into four main components:
+- Routes: Define API endpoints and request/response models
+- Controllers: Handle business logic and data processing
+- Models: Define data structures and database schemas
+- Services: Interface with external APIs (Qloo, OpenRouter)
+
+## Endpoints
+### Cultural Insights
+- `GET /insights/{market}/{category}` - Get cultural affinity data
+- `POST /insights/analyze` - Analyze custom data
+
+### Predictions
+- `POST /predict/demand` - Generate demand forecasts
+- `POST /predict/strategies` - Generate marketing strategies
+
+## Development Setup
+1. Install dependencies: `pip install -r requirements.txt`
+2. Set environment variables:
+   - `QLOO_API_KEY`
+   - `OPENROUTER_API_KEY`
+3. Run locally: `uvicorn main:app --reload`
+
+## Testing
+Run tests with: `pytest tests/api/`
+```
+
+---
+### File: api\services\discord_service.py
 ```python
+import os
+import requests
+from datetime import datetime
+import logging
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+
+def send_alert(prediction, hype_data):
+    """Send a Discord notification with prediction and hype score details.
+    
+    Args:
+        prediction (dict): Prediction data (e.g., {'product': dict, 'uplift': float, 'strategy': str}).
+        hype_data (dict): Hype score data (e.g., {'averageScore': float}).
+    
+    Returns:
+        dict: Response with success status and message.
+    
+    Raises:
+        ValueError: If webhook URL or inputs are invalid.
+        requests.RequestException: If webhook request fails.
+    """
+    if not DISCORD_WEBHOOK_URL:
+        logger.error("DISCORD_WEBHOOK_URL not configured")
+        raise ValueError("DISCORD_WEBHOOK_URL not configured")
+    
+    if not isinstance(prediction, dict) or not all(key in prediction for key in ["product", "uplift", "strategy"]):
+        logger.error("Invalid prediction data")
+        raise ValueError("Invalid prediction data")
+    if not isinstance(hype_data, dict) or "averageScore" not in hype_data:
+        logger.error("Invalid hype data")
+        raise ValueError("Invalid hype data")
+    
+    # Construct Discord embed
+    embed = {
+        "title": f"New Prediction for {prediction['product'].get('name', 'Unknown Product')}",
+        "description": (
+            f"**Category**: {prediction['product'].get('category', 'Unknown')}\n"
+            f"**Uplift**: {prediction['uplift']:.2f}%\n"
+            f"**Strategy**: {prediction['strategy']}\n"
+            f"**Hype Score**: {hype_data['averageScore']:.2f}\n"
+            f"**Timestamp**: {datetime.utcnow().isoformat()}"
+        ),
+        "color": 0x667eea,  # Match caeser_visuals.html gradient
+        "footer": {"text": "CÆSER System"},
+        "fields": [
+            {"name": "Insights Source", "value": "Qloo Taste AI™", "inline": True},
+            {"name": "Prediction Source", "value": "OpenRouter (DeepSeek)", "inline": True}
+        ]
+    }
+    
+    payload = {"embeds": [embed]}
+    
+    try:
+        logger.info(f"Sending Discord alert for {prediction['product'].get('name', 'Unknown Product')}")
+        response = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=5)
+        response.raise_for_status()
+        logger.info("Discord alert sent successfully")
+        return {"success": True, "message": "Discord alert sent successfully"}
+    except requests.RequestException as e:
+        logger.error(f"Failed to send Discord alert: {str(e)}")
+        return {"success": False, "message": f"Failed to send Discord alert: {str(e)}"}
+```
+
+---
+### File: api\services\hype_engine.py
+```python
+import random
+from typing import Dict
+import logging
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def validate_insights(insights: Dict) -> None:
+    """Validate insights data structure.
+    
+    Args:
+        insights (dict): Cultural insights from Qloo API.
+    
+    Raises:
+        ValueError: If insights data is invalid.
+    """
+    if not isinstance(insights, dict) or not insights.get("data"):
+        logger.error("Invalid insights data")
+        raise ValueError("Invalid insights data")
+    if not isinstance(insights["data"], dict):
+        logger.error("Insights data must be a dictionary")
+        raise ValueError("Insights data must be a dictionary")
+
+def calculate_hype_score(insights: Dict) -> Dict:
+    """Calculate a hype score based on cultural insights with simulated consumer behavior.
+    
+    Args:
+        insights (dict): Cultural insights from Qloo API.
+    
+    Returns:
+        Dict: Hype score (0-100) with success status and message.
+    
+    Raises:
+        ValueError: If insights data is invalid.
+    """
+    validate_insights(insights)
+    
+    try:
+        # Extract popularity from Qloo API entities
+        entities = insights["data"].get("entities", [])
+        if not entities:
+            logger.warning("No entities found in insights data, using default popularity")
+            popularity = 0.5
+        else:
+            popularity = sum(entity["properties"].get("popularity", 0.5) for entity in entities) / len(entities)
+        
+        # Simulate trend factor (could be enhanced with bias.trends from Qloo API)
+        trend_factor = insights["data"].get("trend", 1.0)
+        
+        # Calculate base score
+        base_score = popularity * 100 * trend_factor
+        simulation_noise = random.uniform(-10, 10)  # Add randomness for realism
+        
+        # Normalize to 0-100
+        hype_score = max(0.0, min(100.0, base_score + simulation_noise))
+        
+        logger.info(f"Calculated hype score: {hype_score:.2f}")
+        return {"success": True, "averageScore": round(hype_score, 2), "message": "Hype score calculated"}
+    except Exception as e:
+        logger.error(f"Failed to calculate hype score: {str(e)}")
+        return {"success": False, "averageScore": 0.0, "message": f"Failed to calculate hype score: {str(e)}"}
+```
+
+---
+### File: api\services\llm_service.py
+```python
+import os
+from openai import OpenAI
+from retrying import retry
+import logging
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+SITE_URL = "https://caeser.example.com"
+SITE_NAME = "CÆSER"
+
+def sanitize_input(input_data):
+    """Remove potentially harmful characters from input to prevent injection."""
+    if isinstance(input_data, str):
+        return input_data.strip().replace(r'[^\w\s,.-]', '')
+    return input_data
+
+@retry(stop_max_attempt_number=3, wait_exponential_multiplier=1000, wait_exponential_max=5000)
+def get_prediction(product, insights):
+    """Generate demand prediction and marketing strategy using OpenRouter API.
+    
+    Args:
+        product (dict): Product details (e.g., {'name': str, 'category': str, 'description': str}).
+        insights (dict): Cultural insights from Qloo API.
+    
+    Returns:
+        dict: Response with success status, data (uplift and strategy), and message.
+    
+    Raises:
+        ValueError: If API key or inputs are invalid.
+        Exception: If API call fails.
+    """
+    if not OPENROUTER_API_KEY:
+        logger.error("OPENROUTER_API_KEY not configured")
+        raise ValueError("OPENROUTER_API_KEY not configured")
+    
+    if not isinstance(product, dict) or not all(key in product for key in ["name", "category", "description"]):
+        logger.error("Invalid product data: must include name, category, description")
+        raise ValueError("Invalid product data: must include name, category, description")
+    if not isinstance(insights, dict) or not insights.get("data"):
+        logger.error("Invalid insights data")
+        raise ValueError("Invalid insights data")
+    
+    # Sanitize inputs
+    product_name = sanitize_input(product["name"])
+    product_category = sanitize_input(product["category"])
+    product_description = sanitize_input(product["description"])
+    
+    # Initialize OpenRouter client
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=OPENROUTER_API_KEY,
+    )
+    
+    # Construct prompt
+    prompt = f"""
+    Analyze the following product and cultural insights to predict demand uplift and suggest a marketing strategy.
+    Product: {product_name} ({product_category})
+    Description: {product_description}
+    Cultural Insights: {insights['data']}
+    Provide a response in JSON format with 'uplift' (percentage, float) and 'strategy' (string).
+    """
+    
+    try:
+        logger.info(f"Generating prediction for {product_name}")
+        completion = client.chat.completions.create(
+            extra_headers={
+                "HTTP-Referer": SITE_URL,
+                "X-Title": SITE_NAME,
+            },
+            model="deepseek/deepseek-chat-v3-0324:free",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        result = completion.choices[0].message.content.strip()
+        import json
+        parsed_result = json.loads(result)
+        if not all(key in parsed_result for key in ["uplift", "strategy"]):
+            logger.error("Invalid LLM response format")
+            raise ValueError("Invalid LLM response format")
+        logger.info(f"Prediction generated successfully for {product_name}")
+        return {"success": True, "data": parsed_result, "message": "Prediction generated successfully"}
+    except Exception as e:
+        logger.error(f"LLM request failed: {str(e)}")
+        return {"success": False, "data": None, "message": f"LLM request failed: {str(e)}"}
+```
+
+---
+### File: api\services\qloo_service.py
 ```python
 import os
 import requests
@@ -4139,10 +4328,30 @@ def get_cultural_insights(location: str, category: str, insight_type: str = "bra
         logger.error(f"Qloo API request failed: {str(e)}")
         return {"success": False, "data": None, "message": f"Qloo API request failed: {str(e)}"}
 ```
+
+---
+### File: api\utils\logging.py
+```python
+import logging
+
+def setup_logging(name: str = __name__, level: int = logging.INFO) -> logging.Logger:
+    """Configure and return a logger instance.
+    Args:
+        name (str): Logger name (defaults to module name).
+        level (int): Logging level (defaults to INFO).
+    Returns:
+        logging.Logger: Configured logger instance.
+    """
+    logging.basicConfig(
+        level=level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    return logging.getLogger(name)
 ```
 
 ---
-### File: api\utils\circuitBreaker.js
+### File: archive\circuitBreaker.js
 ```javascript
 class CircuitBreaker {
   constructor({ failureThreshold = 3, successThreshold = 2, timeout = 10000 }) {
@@ -4209,6 +4418,9 @@ _[Database file - 12KB]_
 ---
 ### File: data\init_db.py
 ```python
+from api.utils.logging import setup_logging
+logger = setup_logging()
+
 ```python
 import sqlite3
 import os
@@ -4259,6 +4471,7 @@ def init_db():
 if __name__ == "__main__":
     init_db()
 ```
+
 ```
 
 ---
@@ -5451,367 +5664,6 @@ It is feasible to build an MVP for CÆSER within 5 days to compete for the Qloo 
 - [Qloo Taste AI™ Technology](https://www.qloo.com/technology/taste-ai)
 - [RevenueCat Shipaton 2025](https://revenuecat-shipaton-2025.devpost.com/)
 - [RevenueCat Shipaton Rules](https://revenuecat-shipaton-2025.devpost.com/rules)
-```
-
----
-### File: docs\md\caeser_visuals.markdown
-```text
----
-scripts:
-  - https://cdn.jsdelivr.net/npm/chart.js
-  - https://cdn.plot.ly/plotly-2.35.2.min.js
----
-
-# CÆSER System Visualizations
-
-This document provides a comprehensive visual representation of the CÆSER (Cultural Affinity Simulation Engine for Retail) system, including its architecture, components, and data insights. The visuals are coded using Mermaid for diagrams and Chart.js/Plotly for charts, with sample data for illustration.
-
-## Required Extensions
-- **Markdown Preview Enhanced**: Install this VS Code extension to render Mermaid diagrams and Chart.js/Plotly charts.
-
-**Instructions for Viewing:**
-1. Install the "Markdown Preview Enhanced" extension in VS Code.
-2. Open this file (`caeser_visuals.md`) in VS Code.
-3. Use the preview feature (`Ctrl+Shift+V` or `Cmd+Shift+V` on Mac) to render the visuals.
-4. Ensure internet access to load external scripts (Chart.js, Plotly).
-
----
-
-## Table of Contents
-- [Overall System Architecture](#overall-system-architecture)
-  - [Flow Chart](#flow-chart)
-  - [Sequence Diagram](#sequence-diagram)
-- [Cultural Affinity Analysis](#cultural-affinity-analysis)
-  - [Bar Chart](#bar-chart)
-  - [Heat Map](#heat-map)
-  - [Network Graph](#network-graph)
-- [Demand Forecasting](#demand-forecasting)
-  - [Line Chart](#line-chart)
-  - [Area Chart](#area-chart)
-  - [Box Plot](#box-plot)
-- [Marketing Strategies](#marketing-strategies)
-  - [Pie Chart](#pie-chart)
-  - [Sankey Diagram](#sankey-diagram)
-  - [Decision Tree](#decision-tree)
-- [Synthetic Buyer Modeling](#synthetic-buyer-modeling)
-  - [Radar Chart](#radar-chart)
-  - [Scatter Plot](#scatter-plot)
-  - [Histogram](#histogram)
-- [Additional Visuals](#additional-visuals)
-  - [Gantt Chart](#gantt-chart)
-
----
-
-## Overall System Architecture
-
-### Flow Chart
-*Description*: Shows the step-by-step data flow between CÆSER system modules.
-
-```mermaid
-graph LR
-    A[User] --> B[Frontend]
-    B --> C[API]
-    C --> D[Data Processing]
-    D --> E[Qloo API]
-    D --> F[OpenRouter API]
-    D --> G[Database]
-    C --> H[Services]
-    H --> I[Discord Service]
-    B --> J[Dashboard UI]
-```
-
-### Sequence Diagram
-*Description*: Depicts the sequence of operations during a user request.
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant F as Frontend
-    participant A as API
-    participant D as Data Processing
-    participant Q as Qloo API
-    participant O as OpenRouter API
-    participant DB as Database
-    participant S as Services
-    participant DS as Discord Service
-    participant UI as Dashboard UI
-
-    U->>F: Select market/product
-    F->>A: Request insights
-    A->>D: Process request
-    D->>Q: Fetch cultural data
-    Q-->>D: Return affinity scores
-    D->>O: Generate predictions
-    O-->>D: Return predictions
-    D->>DB: Store data
-    D-->>A: Send processed data
-    A-->>F: Return insights/predictions
-    F->>UI: Display visualizations
-    S->>DS: Send Discord alert
-```
-
----
-
-## Cultural Affinity Analysis
-
-### Bar Chart
-*Description*: Compares affinity scores across cultural traits.
-
-```html
-<canvas id="affinityBarChart" width="400" height="200"></canvas>
-<script>
-var ctx = document.getElementById('affinityBarChart').getContext('2d');
-var chart = new Chart(ctx, {
-  type: 'bar',
-  data: {
-    labels: ['Trait 1', 'Trait 2', 'Trait 3'],
-    datasets: [{
-      label: 'Affinity Scores',
-      data: [0.8, 0.6, 0.9],
-      backgroundColor: ['rgba(255, 99, 132, 0.2)', 'rgba(54, 162, 235, 0.2)', 'rgba(255, 206, 86, 0.2)'],
-      borderColor: ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)'],
-      borderWidth: 1
-    }]
-  },
-  options: { scales: { y: { beginAtZero: true, title: { display: true, text: 'Score' } } } }
-});
-</script>
-```
-
-### Heat Map
-*Description*: Shows affinity intensity across regions and categories.
-
-```html
-<div id="affinityHeatMap"></div>
-<script>
-var data = [{
-  z: [[1, 20, 30], [20, 1, 60], [30, 60, 1]],
-  x: ['Region 1', 'Region 2', 'Region 3'],
-  y: ['Category A', 'Category B', 'Category C'],
-  type: 'heatmap'
-}];
-Plotly.newPlot('affinityHeatMap', data);
-</script>
-```
-
-### Network Graph
-*Description*: Illustrates relationships between cultural traits.
-
-```mermaid
-graph TD
-    A[Trait 1] --> B[Trait 2]
-    A --> C[Trait 3]
-    B --> D[Trait 4]
-    C --> D
-```
-
----
-
-## Demand Forecasting
-
-### Line Chart
-*Description*: Tracks demand trends over time.
-
-```html
-<canvas id="demandLineChart" width="400" height="200"></canvas>
-<script>
-var ctx = document.getElementById('demandLineChart').getContext('2d');
-var chart = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr'],
-    datasets: [{
-      label: 'Demand',
-      data: [10, 20, 15, 25],
-      borderColor: 'rgba(75, 192, 192, 1)',
-      tension: 0.1
-    }]
-  }
-});
-</script>
-```
-
-### Area Chart
-*Description*: Emphasizes cumulative demand over time.
-
-```html
-<canvas id="demandAreaChart" width="400" height="200"></canvas>
-<script>
-var ctx = document.getElementById('demandAreaChart').getContext('2d');
-var chart = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr'],
-    datasets: [{
-      label: 'Cumulative Demand',
-      data: [10, 30, 45, 70],
-      fill: true,
-      backgroundColor: 'rgba(75, 192, 192, 0.2)',
-      borderColor: 'rgba(75, 192, 192, 1)'
-    }]
-  }
-});
-</script>
-```
-
-### Box Plot
-*Description*: Shows the distribution of forecasted demand.
-
-```html
-<div id="demandBoxPlot"></div>
-<script>
-var data = [{
-  y: [10, 20, 30, 40, 50],
-  type: 'box'
-}];
-Plotly.newPlot('demandBoxPlot', data);
-</script>
-```
-
----
-
-## Marketing Strategies
-
-### Pie Chart
-*Description*: Shows resource allocation across strategies.
-
-```mermaid
-pie title Resource Allocation
-    "Social Media" : 40
-    "Email Campaign" : 30
-    "Influencer Marketing" : 30
-```
-
-### Sankey Diagram
-*Description*: Illustrates the flow of strategy effectiveness.
-
-```mermaid
-sankey-beta
-Social Media,Engagement,100
-Email Campaign,Conversions,50
-Influencer Marketing,Awareness,80
-Engagement,Sales,60
-Conversions,Sales,40
-Awareness,Sales,20
-```
-
-### Decision Tree
-*Description*: Visualizes the decision-making process for strategy selection.
-
-```mermaid
-graph TD
-    A[Start] --> B{Is budget > $10k?}
-    B -->|Yes| C[Influencer Marketing]
-    B -->|No| D{Is audience young?}
-    D -->|Yes| E[Social Media]
-    D -->|No| F[Email Campaign]
-```
-
----
-
-## Synthetic Buyer Modeling
-
-### Radar Chart
-*Description*: Displays multi-dimensional hype scores for buyer personas.
-
-```html
-<canvas id="buyerRadarChart" width="400" height="400"></canvas>
-<script>
-var ctx = document.getElementById('buyerRadarChart').getContext('2d');
-var chart = new Chart(ctx, {
-  type: 'radar',
-  data: {
-    labels: ['Excitement', 'Loyalty', 'Engagement'],
-    datasets: [{
-      label: 'Persona 1',
-      data: [80, 60, 90],
-      backgroundColor: 'rgba(54, 162, 235, 0.2)',
-      borderColor: 'rgba(54, 162, 235, 1)'
-    }]
-  }
-});
-</script>
-```
-
-### Scatter Plot
-*Description*: Clusters buyer personas by characteristics.
-
-```html
-<canvas id="buyerScatterPlot" width="400" height="200"></canvas>
-<script>
-var ctx = document.getElementById('buyerScatterPlot').getContext('2d');
-var chart = new Chart(ctx, {
-  type: 'scatter',
-  data: {
-    datasets: [{
-      label: 'Personas',
-      data: [{x: 25, y: 50000}, {x: 35, y: 75000}, {x: 45, y: 100000}],
-      backgroundColor: 'rgba(54, 162, 235, 0.5)'
-    }]
-  },
-  options: {
-    scales: {
-      x: { title: { display: true, text: 'Age' } },
-      y: { title: { display: true, text: 'Income' } }
-    }
-  }
-});
-</script>
-```
-
-### Histogram
-*Description*: Shows the distribution of hype scores.
-
-```html
-<canvas id="hypeHistogram" width="400" height="200"></canvas>
-<script>
-var ctx = document.getElementById('hypeHistogram').getContext('2d');
-var chart = new Chart(ctx, {
-  type: 'bar',
-  data: {
-    labels: ['0.0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1.0'],
-    datasets: [{
-      label: 'Frequency',
-      data: [10, 15, 20, 25, 30],
-      backgroundColor: 'rgba(54, 162, 235, 0.2)',
-      borderColor: 'rgba(54, 162, 235, 1)',
-      borderWidth: 1
-    }]
-  },
-  options: { scales: { y: { beginAtZero: true } } }
-});
-</script>
-```
-
----
-
-## Additional Visuals
-
-### Gantt Chart
-*Description*: Visualizes the CÆSER project timeline.
-
-```mermaid
-gantt
-    title CÆSER Project Timeline
-    dateFormat  YYYY-MM-DD
-    section Setup
-    API Keys & Setup :a1, 2025-07-19, 1d
-    Qloo Integration :after a1, 1d
-    section Development
-    LLM Integration :2025-07-21, 1d
-    Buyer Modeling :after a2, 1d
-    Forecasting :after a3, 1d
-    section Deployment
-    Testing :2025-07-24, 1d
-    Submission :after a4, 1d
-```
-
----
-
-## Notes
-- **Sample Data**: The visuals use placeholder data (e.g., affinity scores, demand values). Replace with actual CÆSER system data for real insights.
-- **Adaptability**: Each chart/diagram can be modified by updating the data or labels to reflect specific system outputs.
-- **Rendering**: Ensure the Markdown Preview Enhanced extension is active to view the visuals. Mermaid diagrams render natively, while Chart.js/Plotly require the scripts loaded in the front matter.
 ```
 
 ---
@@ -6534,77 +6386,10 @@ class MarketSelector:
 ```
 
 ---
-### File: frontend\archive\App.js
-```javascript
-import React from 'react';
-import { HypeEngine } from '../api/services/hypeEngine';
-import './App.css';
-
-function App() {
-  const [hypeScore, setHypeScore] = React.useState(null);
-  const [perfMetrics, setPerfMetrics] = React.useState({
-    loadStart: 0,
-    dataFetchTime: 0,
-    renderTime: 0
-  });
-
-  React.useEffect(() => {
-    const startTime = performance.now();
-    setPerfMetrics(prev => ({...prev, loadStart: startTime}));
-
-    async function loadData() {
-      try {
-        const fetchStart = performance.now();
-        const response = await HypeEngine.simulateBuyers({
-          affinities: [0.85],
-          trendScore: 0.9,
-          culturalRelevance: 0.8
-        }, 100);
-        const fetchEnd = performance.now();
-        
-        setHypeScore(response.metrics.averageScore);
-        setPerfMetrics(prev => ({
-          ...prev,
-          dataFetchTime: fetchEnd - fetchStart,
-          renderTime: performance.now() - startTime
-        }));
-
-        console.log('Performance Metrics:', {
-          dataFetch: `${(fetchEnd - fetchStart).toFixed(2)}ms`,
-          totalRender: `${(performance.now() - startTime).toFixed(2)}ms`
-        });
-      } catch (error) {
-        console.error('Error loading hype data:', error);
-      }
-    }
-    loadData();
-  }, []);
-
-  return (
-    <div className="App">
-      <header className="App-header">
-        <h1>Cultural Affinity Dashboard</h1>
-        {hypeScore ? (
-          <div className="hype-score">
-            <h2>Current Hype Score</h2>
-            <div className="score-value">{hypeScore.toFixed(2)}</div>
-            <div className="score-range">(0-1 scale)</div>
-          </div>
-        ) : (
-          <p>Loading hype data...</p>
-        )}
-      </header>
-    </div>
-  );
-}
-
-export default App;
-```
-
----
 ### File: frontend\src\main.py
 ```python
-```python
+from api.utils.logging import setup_logging
+logger = setup_logging()
 import streamlit as st
 import requests
 import json
@@ -6788,19 +6573,20 @@ def main():
 
 if __name__ == "__main__":
     main()
-```
+logger.info('Streamlit app initialized successfully')
+# Note: Ensure the API_BASE_URL is updated to the correct endpoint after deployment.
 ```
 
 
 ---
 
 ## Summary Statistics
-- **Total Files Found:** 37
-- **Successfully Processed:** 33
+- **Total Files Found:** 36
+- **Successfully Processed:** 32
 - **Skipped (Database Files):** 1
 - **Skipped (Binary):** 3
 - **Skipped (Too Large):** 0
 - **Skipped (Errors):** 0
 - **Total Skipped:** 4
 
-**Completion:** 2025-07-25 07:16:19
+**Completion:** 2025-07-25 10:14:47

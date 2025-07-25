@@ -12,7 +12,8 @@ app = FastAPI()
 
 @app.get("/insights/{location}/{category}")
 async def get_insights(location: str, category: str, insight_type: str = "brand"):
-    """Fetch cultural insights for a location and category."""
+    if not location.strip() or not category.strip():
+        raise HTTPException(status_code=400, detail="Location and category must not be empty")
     logger.info(f"Fetching insights for {location}/{category}/{insight_type}")
     return qloo_service.get_cultural_insights(location, category, insight_type)
 

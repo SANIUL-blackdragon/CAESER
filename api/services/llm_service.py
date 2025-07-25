@@ -1,4 +1,3 @@
-```python
 import os
 from openai import OpenAI
 from retrying import retry
@@ -71,7 +70,7 @@ def get_prediction(product, insights):
                 "HTTP-Referer": SITE_URL,
                 "X-Title": SITE_NAME,
             },
-            model="deepseek/deepseek-chat-v3-0324:free",
+              model="deepseek/deepseek-r1:free",
             messages=[
                 {"role": "user", "content": prompt}
             ]
@@ -87,4 +86,3 @@ def get_prediction(product, insights):
     except Exception as e:
         logger.error(f"LLM request failed: {str(e)}")
         return {"success": False, "data": None, "message": f"LLM request failed: {str(e)}"}
-```

@@ -1,4 +1,3 @@
-```python
 import os
 import requests
 from datetime import datetime
@@ -64,4 +63,3 @@ def send_alert(prediction, hype_data):
     except requests.RequestException as e:
         logger.error(f"Failed to send Discord alert: {str(e)}")
         return {"success": False, "message": f"Failed to send Discord alert: {str(e)}"}
-```

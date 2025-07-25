@@ -1,4 +1,3 @@
-```python
 import os
 import requests
 import logging
@@ -17,8 +16,7 @@ QLOO_API_KEY = os.getenv("QLOO_API_KEY")
 BASE_URL = "https://hackathon.api.qloo.com/v2/insights"
 
 def sanitize_input(input_str: str) -> str:
-    """Remove potentially harmful characters from input to prevent injection."""
-    return input_str.strip().replace(r'[^\w\s,.-]', '')
+    return input_str.strip().replace(r"[^a-zA-Z0-9\s,.-]", "")
 
 @retry(stop_max_attempt_number=3, wait_exponential_multiplier=1000, wait_exponential_max=5000)
 def get_cultural_insights(location: str, category: str, insight_type: str = "brand") -> Dict:
@@ -104,4 +102,3 @@ def get_cultural_insights(location: str, category: str, insight_type: str = "bra
     except requests.RequestException as e:
         logger.error(f"Qloo API request failed: {str(e)}")
         return {"success": False, "data": None, "message": f"Qloo API request failed: {str(e)}"}
-```
