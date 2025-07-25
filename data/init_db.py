@@ -1,7 +1,6 @@
 from api.utils.logging import setup_logging
 logger = setup_logging()
 
-```python
 import sqlite3
 import os
 import logging
@@ -35,9 +34,25 @@ def init_db():
             )
         """)
         
-        # Create index
+        # Create index for cultural_insights
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_insights ON cultural_insights(location, category)
+        """)
+        
+        # Create hype_scores table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS hype_scores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                score REAL NOT NULL,
+                category TEXT NOT NULL,
+                location TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Create index for hype_scores
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_hype_scores ON hype_scores(category, location, created_at)
         """)
         
         conn.commit()
@@ -50,4 +65,3 @@ def init_db():
 
 if __name__ == "__main__":
     init_db()
-```

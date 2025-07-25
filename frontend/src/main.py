@@ -39,13 +39,15 @@ st.markdown("""
 # MarketSelector Component
 def market_selector():
     st.subheader("Select Market and Category")
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         location = st.selectbox("Location", ["New York, NY", "London", "Tokyo"], key="location")
     with col2:
         category = st.selectbox("Category", ["sneakers", "electronics", "fashion"], key="category")
+    with col3:
+        threshold = st.number_input("Alert Threshold (%)", min_value=0.0, max_value=100.0, value=20.0, step=1.0)
     insight_type = st.selectbox("Insight Type", ["brand", "demographics", "heatmap"], key="insight_type")
-    return location, category, insight_type
+    return location, category, insight_type, threshold
 
 # ProductKeywords Component
 def product_keywords():
@@ -60,11 +62,11 @@ def product_description():
     return description.strip() if description else ""
 
 # InsightVisualizer Component
-def insight_visualizer(insights, insight_type):
+def insight_visualizer(insights, insight_type, location, category):
     st.subheader("Cultural Insights")
     if not insights or not insights.get("success"):
         st.error("Failed to fetch cultural insights. Please try again.")
-        return
+        return None
     
     try:
         entities = insights["data"].get("entities", [])
@@ -76,6 +78,7 @@ def insight_visualizer(insights, insight_type):
             fig = px.bar(df, x="trait", y="score", title="Cultural Affinity Scores",
                          color_discrete_sequence=["#667eea"])
             st.plotly_chart(fig, use_container_width=True)
+            return df
         
         elif insight_type == "demographics":
             df = pd.DataFrame([
@@ -85,10 +88,11 @@ def insight_visualizer(insights, insight_type):
             fig = px.bar(df, x="age_group", y="affinity", title="Demographic Affinity",
                          color_discrete_sequence=["#764ba2"])
             st.plotly_chart(fig, use_container_width=True)
+            return df
         
         elif insight_type == "heatmap":
-            # Mock heatmap data (replace with real Qloo heatmap data if available)
             z = [[0.8, 0.6, 0.9], [0.7, 0.85, 0.75], [0.9, 0.8, 0.95]]
+            df = pd.DataFrame(z, columns=["North America", "Europe", "Asia"], index=["Fashion", "Electronics", "Home"])
             fig = go.Figure(data=go.Heatmap(
                 z=z,
                 x=["North America", "Europe", "Asia"],
@@ -97,26 +101,39 @@ def insight_visualizer(insights, insight_type):
             ))
             fig.update_layout(title="Regional Affinity Heatmap")
             st.plotly_chart(fig, use_container_width=True)
+            return df
+        
+        # Time Series Plot for Hype Scores
+        history_response = requests.get(f"{API_BASE_URL}/hype/history/{location}/{category}", timeout=10)
+        history = history_response.json() if history_response.status_code == 200 else {"data": []}
+        if history["data"]:
+            df_history = pd.DataFrame(history["data"])
+            fig_history = px.line(df_history, x="timestamp", y="score", title="Hype Score Trends",
+                                  color_discrete_sequence=["#667eea"])
+            st.plotly_chart(fig_history, use_container_width=True)
+            return df_history
     except Exception as e:
         logger.error(f"Error rendering insights: {str(e)}")
         st.error(f"Error rendering insights: {str(e)}")
+        return None
 
 # PredictionDashboard Component
 def prediction_dashboard(predictions, hype_score):
     st.subheader("Demand Predictions and Strategies")
     if not predictions or not predictions.get("success"):
         st.error("Failed to generate predictions. Please try again.")
-        return
+        return None
     
     col1, col2 = st.columns(2)
     with col1:
         st.metric("Demand Uplift", f"{predictions['data'].get('uplift', 'Unknown')}%")
         st.metric("Hype Score", f"{hype_score.get('averageScore', 'Unknown')}")
+        if hype_score.get("change_detected", False):
+            st.warning(f"Significant change detected: {hype_score['change_percent']}%")
     with col2:
         st.write("**Recommended Strategy**")
         st.write(predictions["data"].get("strategy", "Unknown"))
     
-    # Demand Line Chart
     df = pd.DataFrame({
         "Month": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
         "Demand": [120, 190, 300, 500, 200, 300]
@@ -124,28 +141,42 @@ def prediction_dashboard(predictions, hype_score):
     fig = px.line(df, x="Month", y="Demand", title="Demand Trends",
                   color_discrete_sequence=["#667eea"])
     st.plotly_chart(fig, use_container_width=True)
+    return pd.DataFrame({
+        "Metric": ["Demand Uplift", "Hype Score", "Strategy"],
+        "Value": [f"{predictions['data'].get('uplift', 'Unknown')}%", 
+                  f"{hype_score.get('averageScore', 'Unknown')}", 
+                  predictions["data"].get("strategy", "Unknown")]
+    })
+
+# Export Report Function
+def export_report(insights_df, predictions_df):
+    if insights_df is not None and predictions_df is not None:
+        report_df = pd.concat([insights_df, predictions_df], axis=1, keys=["Insights", "Predictions"])
+        csv = report_df.to_csv(index=False)
+        st.download_button(
+            label="Export Report as CSV",
+            data=csv,
+            file_name="caeser_report.csv",
+            mime="text/csv"
+        )
 
 # Main App Logic
 def main():
     st.title("CÆSER: Cultural Affinity Simulation Engine for Retail")
     
-    # Collect inputs
-    location, category, insight_type = market_selector()
+    location, category, insight_type, threshold = market_selector()
     keywords = product_keywords()
     description = product_description()
     
-    # Submit button
     if st.button("Generate Insights and Predictions", key="submit"):
         with st.spinner("Fetching insights and predictions..."):
             try:
-                # Fetch cultural insights
                 insights_response = requests.get(
                     f"{API_BASE_URL}/insights/{location}/{category}?insight_type={insight_type}",
                     timeout=10
                 )
                 insights = insights_response.json() if insights_response.status_code == 200 else {}
                 
-                # Fetch predictions
                 product = {
                     "name": ", ".join(keywords) or category,
                     "category": category,
@@ -159,18 +190,18 @@ def main():
                 )
                 predictions = prediction_response.json() if prediction_response.status_code == 200 else {}
                 
-                # Calculate hype score
+                hype_payload = {"insights": insights, "category": category, "location": location, "threshold": threshold}
                 hype_score = requests.post(
                     f"{API_BASE_URL}/hype/score",
-                    json={"insights": insights},
+                    json=hype_payload,
                     timeout=10
                 ).json()
                 
-                # Display results
-                insight_visualizer(insights, insight_type)
-                prediction_dashboard(predictions, hype_score)
+                insights_df = insight_visualizer(insights, insight_type, location, category)
+                predictions_df = prediction_dashboard(predictions, hype_score)
                 
-                # Send Discord alert
+                export_report(insights_df, predictions_df)
+                
                 discord_payload = {"prediction": {"product": product, **predictions.get("data", {})}, "hype_data": hype_score}
                 requests.post(f"{API_BASE_URL}/discord/alert", json=discord_payload, timeout=5)
                 
@@ -184,4 +215,3 @@ def main():
 if __name__ == "__main__":
     main()
 logger.info('Streamlit app initialized successfully')
-# Note: Ensure the API_BASE_URL is updated to the correct endpoint after deployment.

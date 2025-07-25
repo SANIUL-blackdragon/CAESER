@@ -14,14 +14,10 @@ def send_alert(prediction, hype_data):
     
     Args:
         prediction (dict): Prediction data (e.g., {'product': dict, 'uplift': float, 'strategy': str}).
-        hype_data (dict): Hype score data (e.g., {'averageScore': float}).
+        hype_data (dict): Hype score data (e.g., {'averageScore': float, 'change_detected': bool}).
     
     Returns:
         dict: Response with success status and message.
-    
-    Raises:
-        ValueError: If webhook URL or inputs are invalid.
-        requests.RequestException: If webhook request fails.
     """
     if not DISCORD_WEBHOOK_URL:
         logger.error("DISCORD_WEBHOOK_URL not configured")
@@ -34,23 +30,25 @@ def send_alert(prediction, hype_data):
         logger.error("Invalid hype data")
         raise ValueError("Invalid hype data")
     
-    # Construct Discord embed
     embed = {
         "title": f"New Prediction for {prediction['product'].get('name', 'Unknown Product')}",
         "description": (
             f"**Category**: {prediction['product'].get('category', 'Unknown')}\n"
             f"**Uplift**: {prediction['uplift']:.2f}%\n"
             f"**Strategy**: {prediction['strategy']}\n"
-            f"**Hype Score**: {hype_data['averageScore']:.2f}\n"
-            f"**Timestamp**: {datetime.utcnow().isoformat()}"
+            f"**Hype Score**: {hype_data['averageScore']:.2f}"
         ),
-        "color": 0x667eea,  # Match caeser_visuals.html gradient
+        "color": 0x667eea,
         "footer": {"text": "CÆSER System"},
         "fields": [
             {"name": "Insights Source", "value": "Qloo Taste AI™", "inline": True},
             {"name": "Prediction Source", "value": "OpenRouter (DeepSeek)", "inline": True}
         ]
     }
+    
+    if hype_data.get("change_detected", False):
+        embed["description"] += f"\n**Alert**: Hype score changed by {hype_data['change_percent']:.2f}%!"
+        embed["color"] = 0xff0000  # Red for alerts
     
     payload = {"embeds": [embed]}
     
