@@ -48,18 +48,6 @@ CÆSER is an AI system designed to predict, simulate, and strategize market beha
 5. Click "Generate Insights and Predictions" to view charts and recommendations.
 6. Receive Discord alerts with results.
 
-## Deployment
-1. Push to Heroku:
-   ```bash
-   heroku create caeser-mvp
-   git push heroku main
-   heroku config:set QLOO_API_KEY=your_key OPENROUTER_API_KEY=your_key DISCORD_WEBHOOK_URL=your_url
-   ```
-2. Access at the provided Heroku URL.
-3. Optionally, deploy frontend to Streamlit Cloud:
-   ```bash
-   streamlit run frontend/src/main.py --server.port 8501
-   ```
 
 ## Contribution Guidelines
 - Follow PEP 8 for Python code.
