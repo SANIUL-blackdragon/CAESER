@@ -2,9 +2,10 @@
 param(
     [string]$OutputPath = "docs/md/summary-of-alpha.md",
     [string[]]$ExcludeDirs = @(".git", "venv", "node_modules", ".vscode", "__pycache__", "test", "tests", "__tests__", "spec", "config", "configs", "configuration", "settings"),
-    [string[]]$ExcludeFiles = @("\.log$", "\.tmp$", "\.exe$", "\.dll$", "\.bin$", "\.txt$", "\.config$", "\.conf$", "\.cfg$", "\.ini$", "\.settings$", "\.bak$", "\.swp$", "\.swo$", "\.old$", "\.orig$", "\.patch$", "\.diff$", "\.md5$", "\.sha1$", "\.sha256$", "\.json"),
+    [string[]]$ExcludeFiles = @("\.log$", "\.tmp$", "\.exe$", "\.dll$", "\.bin$", "\.txt$", "\.config$", "\.conf$", "\.cfg$", "\.ini$", "\.settings$", "\.bak$", "\.swp$", "\.swo$", "\.old$", "\.orig$", "\.patch$", "\.diff$", "\.md5$", "\.sha1$", "\.sha256$", "\.json", "\.mjs", "\.cjs", "\.tsbuildinfo", "\.d.ts", "\.map", "\.lock", "\.zip", "\.tar", "\.gz", "\.rar", "\.7z"),
+    # New parameter for database file extensions
     [string[]]$DatabaseExtensions = @(".db", ".sqlite", ".sqlite3", ".mdb", ".accdb"),
-    [int]$MaxFileSize = 1MB,
+    [int]$MaxFileSize = 10MB,
     [switch]$IncludeBinary
 )
 
