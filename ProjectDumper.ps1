@@ -1,8 +1,18 @@
-﻿# Enhanced Project Dumper 9000™ with Database File Handling
+﻿<#
+.SYNOPSIS
+Enhanced Project Dumper 9000™ with Database File Handling
+
+.DESCRIPTION
+This script generates a markdown summary of a project, excluding specified directories and files.
+
+.NOTES
+Run this script in PowerShell. Example:
+    .\ProjectDumper.ps1 -OutputPath "docs/summary.md"
+#>
 param(
     [string]$OutputPath = "docs/md/summary-of-alpha.md",
     [string[]]$ExcludeDirs = @(".git", "venv", "node_modules", ".vscode", "__pycache__", "test", "tests", "__tests__", "spec", "config", "configs", "configuration", "settings"),
-    [string[]]$ExcludeFiles = @("\.log$", "\.tmp$", "\.exe$", "\.dll$", "\.bin$", "\.txt$", "\.config$", "\.conf$", "\.cfg$", "\.ini$", "\.settings$", "\.bak$", "\.swp$", "\.swo$", "\.old$", "\.orig$", "\.patch$", "\.diff$", "\.md5$", "\.sha1$", "\.sha256$", "\.json", "\.mjs", "\.cjs", "\.tsbuildinfo", "\.d.ts", "\.map", "\.lock", "\.zip", "\.tar", "\.gz", "\.rar", "\.7z"),
+    [string[]]$ExcludeFiles = @("\.log$", "\.tmp$", "\.exe$", "\.dll$", "\.bin$", "\.txt$", "\.config$", "\.conf$", "\.cfg$", "\.ini$", "\.settings$", "\.bak$", "\.swp$", "\.swo$", "\.old$", "\.orig$", "\.patch$", "\.diff$", "\.md5$", "\.sha1$", "\.sha256$", "\.json$", "\.mjs$", "\.cjs$", "\.tsbuildinfo$", "\.d\.ts$", "\.map$", "\.lock$", "\.zip$", "\.tar$", "\.gz$", "\.rar$", "\.7z$"),
     # New parameter for database file extensions
     [string[]]$DatabaseExtensions = @(".db", ".sqlite", ".sqlite3", ".mdb", ".accdb"),
     [int]$MaxFileSize = 10MB,

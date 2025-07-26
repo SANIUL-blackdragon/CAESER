@@ -88,6 +88,100 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_hype_scores ON hype_scores(category, location, created_at)
         """)
         
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS feedback_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                product_name TEXT NOT NULL,
+                category TEXT NOT NULL,
+                feedback_text TEXT,
+                sentiment_weight REAL DEFAULT 1.0,
+                timestamp TEXT NOT NULL
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS model_weights (
+                key TEXT PRIMARY KEY,
+                value REAL NOT NULL
+            )
+        """)
+
+        # Seed weights
+        cursor.execute("""
+            INSERT OR IGNORE INTO model_weights(key, value) VALUES
+                ('sentiment_weight', 1.0),
+                ('popularity_weight', 1.0),
+                ('trend_weight', 1.0);
+        """)
+        logger.info("Seeded default model weights")
+
+        # New tables
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS behavioral_trends (
+                id INTEGER PRIMARY KEY,
+                category TEXT,
+                avg_hype_7d REAL,
+                date DATE
+            );
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS synthetic_personas (
+                id INTEGER PRIMARY KEY,
+                age INTEGER,
+                income INTEGER
+            );
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS request_state (
+                id INTEGER PRIMARY KEY,
+                endpoint TEXT,
+                payload TEXT,
+                ts TEXT
+            );
+        """)
+        logger.info("Created new tables: behavioral_trends, synthetic_personas, request_state")
+
+        # 100 mock personas
+        cursor.execute("""
+            INSERT INTO synthetic_personas(age, income)
+            WITH RECURSIVE cte(x) AS (
+                SELECT 1 UNION ALL SELECT x+1 FROM cte LIMIT 100
+            ) SELECT abs(random()%48)+18, abs(random()%80000)+20000 FROM cte;
+        """)
+        logger.info("Inserted 100 mock personas")
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS logistics_data (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                retailer TEXT,
+                shipment_count INTEGER,
+                timestamp TEXT NOT NULL,
+                source TEXT DEFAULT 'mock'
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS error_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                endpoint TEXT,
+                error_msg TEXT,
+                stack_trace TEXT,
+                timestamp TEXT NOT NULL
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS api_calls (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                endpoint TEXT,
+                duration_ms REAL,
+                timestamp TEXT NOT NULL
+            )
+        """)
+        
         conn.commit()
         logger.info("Database initialized successfully")
     except sqlite3.Error as e:

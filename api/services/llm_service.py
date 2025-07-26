@@ -84,6 +84,8 @@ def get_prediction(product, insights):
         log_llm_data_quality("response_time", response_time)
         
         logger.info(f"Prediction generated successfully for {product_name}")
+        parsed_result["cpc"] = 1.0   # TikTok mock CPC ($1)
+        parsed_result["cpm"] = 5.0   # TikTok mock CPM ($5)
         return {"success": True, "data": parsed_result, "message": "Prediction generated successfully"}
     except Exception as e:
         log_llm_data_quality("errors", 1.0)  # Log error occurrence

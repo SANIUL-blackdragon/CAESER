@@ -45,7 +45,7 @@ class SocialMediaSpider(scrapy.Spider):
     }
     ua = UserAgent()
 
-    def __init__(self, sources='reddit,twitter,tiktok', target='sneakers', keywords='', *args, **kwargs):
+    def __init__(self, sources='reddit,twitter,tiktok,imdb,ebay', target='sneakers', keywords='', *args, **kwargs):
         super(SocialMediaSpider, self).__init__(*args, **kwargs)
         self.sources = [s.strip().lower() for s in sources.split(',')]
         self.target = target
@@ -58,6 +58,10 @@ class SocialMediaSpider(scrapy.Spider):
             self.start_urls.append(f"https://www.tiktok.com/search?q={self.target}")
         if 'instagram' in self.sources:
             self.start_urls.append(f"https://www.instagram.com/explore/tags/{self.target}/")
+        if 'imdb' in self.sources:
+            self.start_urls.append(f"https://www.imdb.com/search/title/?title_type=feature&genres={self.target}&sort=user_rating,desc")
+        if 'ebay' in self.sources:
+            self.start_urls.append(f"https://www.ebay.com/sch/i.html?_nkw={self.target}&_sacat=0")
         if 'twitter' not in self.sources:
             return
         
@@ -76,7 +80,7 @@ class SocialMediaSpider(scrapy.Spider):
             yield Request(twitter_url, headers=self.twitter_headers, callback=self.parse_twitter, method='GET')
 
     def parse(self, response):
-        source = 'reddit' if 'reddit' in response.url else 'tiktok' if 'tiktok' in response.url else 'instagram'
+        source = 'reddit' if 'reddit' in response.url else 'tiktok' if 'tiktok' in response.url else 'instagram' if 'instagram' in response.url else 'imdb' if 'imdb' in response.url else 'ebay'
         
         if source == 'reddit':
             for post in response.css("div.Post"):
@@ -94,16 +98,23 @@ class SocialMediaSpider(scrapy.Spider):
                 yield response.follow(next_page, self.parse, headers={'User-Agent': self.ua.random})
         
         elif source == 'tiktok':
+            count = 0
             for video in response.css("div.tiktok-x6y88p-DivItemContainerV2"):
+                if count >= 50:
+                    break
                 text = video.css("div.tiktok-1qb12g8-DivThreeColumnContainer p::text").get(default="").strip().lower()
+                comments = video.css("div.tiktok-1qb12g8-DivCommentContent p::text").getall()
                 if not self.keywords or any(kw in text for kw in self.keywords):
                     likes = video.css("strong.tiktok-1p7xrbz-StrongText::text").get(default="0")
+                    # Append first 5 comments to text
+                    comment_text = " | Comments: " + " ".join(comments[:5]) if comments else ""
                     yield {
-                        "text": text,
+                        "text": text + comment_text,
                         "likes": int(likes.replace('K', '000').replace('M', '000000')) if likes else 0,
                         "source": source,
                         "timestamp": datetime.now().isoformat()
                     }
+                count += 1
             next_page = response.css("a.tiktok-1p7xrbz-AButton::attr(href)").get()
             if next_page:
                 time.sleep(random.uniform(2, 5))
@@ -120,6 +131,44 @@ class SocialMediaSpider(scrapy.Spider):
                         "source": source,
                         "timestamp": datetime.now().isoformat()
                     }
+        
+        elif source == 'imdb':
+            count = 0
+            for movie in response.css("div.lister-item"):
+                if count >= 50:
+                    break
+                title = movie.css("h3 a::text").get(default="").strip().lower()
+                rating = movie.css("div.ratings-bar strong::text").get(default="0")
+                if not self.keywords or any(kw in title for kw in self.keywords):
+                    yield {
+                        "text": title,
+                        "likes": float(rating) if rating.replace('.', '').isdigit() else 0.0,
+                        "source": source,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    count += 1
+            next_page = response.css("a.next-page::attr(href)").get()
+            if next_page and count < 50:
+                yield response.follow(next_page, self.parse, headers={'User-Agent': self.ua.random})
+        
+        elif source == 'ebay':
+            count = 0
+            for item in response.css("li.s-item"):
+                if count >= 50:
+                    break
+                title = item.css("h3.s-item__title::text").get(default="").strip().lower()
+                price = item.css("span.s-item__price::text").get(default="0").replace("$", "").replace(",", "").strip()
+                if not self.keywords or any(kw in title for kw in self.keywords):
+                    yield {
+                        "text": title,
+                        "likes": float(price) if price.replace('.', '').isdigit() else 0.0,
+                        "source": source,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    count += 1
+            next_page = response.css("a.pagination__next::attr(href)").get()
+            if next_page and count < 50:
+                yield response.follow(next_page, self.parse, headers={'User-Agent': self.ua.random})
 
     def parse_twitter(self, response):
         try:
@@ -139,7 +188,7 @@ class SocialMediaSpider(scrapy.Spider):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Social Media Spider")
-    parser.add_argument("--sources", default="reddit,twitter,tiktok,instagram", help="Comma-separated sources (e.g., reddit,twitter)")
+    parser.add_argument("--sources", default="reddit,twitter,tiktok,instagram,imdb,ebay", help="Comma-separated sources (e.g., reddit,twitter)")
     parser.add_argument("--target", default="sneakers", help="Target subreddit or query")
     parser.add_argument("--keywords", default="", help="Comma-separated keywords")
     args = parser.parse_args()

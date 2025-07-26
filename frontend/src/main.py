@@ -10,12 +10,22 @@ import openpyxl
 from io import BytesIO
 import logging
 from api.utils.logging import setup_logging
+import sqlite3
+import os
+import sys
+import pandas as pd
+from datetime import datetime
+
+# Add scrapers directory to path for Google Trends import
+sys.path.append('../scrapers')
+from google_trends import get_google_trends, store_trend
 
 logger = setup_logging()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 API_BASE_URL = "http://localhost:8000"  # Update to Heroku URL after deployment
+DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
 st.set_page_config(page_title="CÆSER Dashboard", layout="wide")
 
 st.markdown("""
@@ -26,6 +36,7 @@ st.markdown("""
         .product-keywords__input { width: 100%; }
         .product-description__textarea { width: 100%; min-height: 100px; }
         .data-quality__widget { background-color: #f0f0f0; padding: 1rem; border-radius: 8px; }
+        .tabs-container { margin-top: 2rem; }
         @media (max-width: 768px) {
             .market-selector__dropdown { font-size: 14px; }
             .insight-visualizer__chart { height: 300px; }
@@ -37,6 +48,88 @@ st.markdown("""
         .stButton>button { background-color: var(--primary-color); color: white; }
     </style>
 """, unsafe_allow_html=True)
+
+def init_store_table():
+    """Initialize the store_data table if it doesn't exist"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS store_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product TEXT,
+            sales REAL,
+            date TEXT,
+            timestamp TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def user_provided_store_data():
+    """Widget for uploading store data via CSV"""
+    st.subheader("Upload Store Data")
+    uploaded_file = st.file_uploader("Choose a CSV file (product, sales, date)", type="csv")
+    
+    if uploaded_file:
+        try:
+            df = pd.read_csv(uploaded_file)
+            if not all(col in df.columns for col in ['product', 'sales', 'date']):
+                st.error("CSV must contain columns: product, sales, date")
+                return
+                
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            for _, row in df.iterrows():
+                cursor.execute("""
+                    INSERT INTO store_data (product, sales, date, timestamp)
+                    VALUES (?, ?, ?, ?)
+                """, (row['product'], row['sales'], row['date'], datetime.now().isoformat()))
+                
+            conn.commit()
+            conn.close()
+            st.success(f"Successfully uploaded {len(df)} store records")
+            
+            # Display uploaded data
+            st.dataframe(df.head())
+        except Exception as e:
+            st.error(f"Error processing file: {str(e)}")
+
+def fetch_and_display_trends():
+    """Widget for Google Trends search"""
+    st.subheader("Google Trends Search")
+    keywords_input = st.text_input("Enter keywords (comma-separated, e.g., sneakers, boots):")
+    
+    if st.button("Fetch Trends"):
+        if not keywords_input:
+            st.error("Please enter at least one keyword")
+            return
+            
+        keywords = [kw.strip() for kw in keywords_input.split(",")]
+        with st.spinner("Fetching Google Trends data..."):
+            try:
+                trends = get_google_trends(keywords)
+                if not trends:
+                    st.warning("No trends data found")
+                    return
+                    
+                # Store trends in database
+                for keyword, interest in trends.items():
+                    store_trend(keyword, interest)
+                
+                st.success("Trends fetched and stored successfully")
+                
+                # Display trends data
+                trends_df = pd.DataFrame({
+                    "Keyword": list(trends.keys()),
+                    "Interest": list(trends.values()),
+                    "Source": "google_trends",
+                    "Timestamp": datetime.now().isoformat()
+                })
+                st.dataframe(trends_df)
+                
+            except Exception as e:
+                st.error(f"Error fetching trends: {str(e)}")
 
 def market_selector():
     st.subheader("Select Market and Category")
@@ -188,7 +281,6 @@ def data_quality_widget():
     except Exception as e:
         logger.error(f"Error fetching data quality: {str(e)}")
         st.error(f"Error fetching data quality: {str(e)}")
-# [Remaining content unchanged]
 
 def llm_data_quality_widget():
     st.subheader("LLM Data Quality Report")
@@ -233,83 +325,135 @@ def get_marked_products(user_id):
 def main():
     st.title("CÆSER: Cultural Affinity Simulation Engine for Retail")
     
-    user_id = st.text_input("User ID", help="Enter your user ID")
-    location, category, insight_type, threshold = market_selector()
-    keywords = product_keywords()
-    description = product_description()
-    export_format = st.selectbox("Export Format", ["PDF", "Excel", "CSV"], key="export_format")
+    # Initialize store data table
+    init_store_table()
     
-    if user_id:
-        marked_products = get_marked_products(user_id)
-        if marked_products:
-            st.subheader("Marked Products")
-            for product in marked_products:
-                st.write(f"{product['product_name']} ({product['category']})")
+    # Create tabs for different sections
+    tab1, tab2, tab3 = st.tabs(["Main Dashboard", "Store Data", "Google Trends"])
     
-    if st.button("Generate Insights and Predictions", key="submit"):
-        with st.spinner("Fetching insights and predictions..."):
-            try:
-                insights_response = requests.get(
-                    f"{API_BASE_URL}/insights/{location}/{category}?insight_type={insight_type}",
-                    timeout=10
-                )
-                insights = insights_response.json() if insights_response.status_code == 200 else {}
-                
-                product = {
-                    "name": ", ".join(keywords) or category,
-                    "category": category,
-                    "description": description or f"{category} product"
-                }
-                
-                if st.checkbox("Mark this product for sentiment tracking", key="mark_product"):
-                    mark_product(user_id, product["name"], category)
-                
-                prediction_payload = {"product": product, "insights": insights}
-                prediction_response = requests.post(
-                    f"{API_BASE_URL}/predict/demand",
-                    json=prediction_payload,
-                    timeout=10
-                )
-                predictions = prediction_response.json() if prediction_response.status_code == 200 else {}
-                
-                hype_payload = {"insights": insights, "category": category, "location": location, "threshold": threshold, "product_name": product["name"]}
-                hype_response = requests.post(
-                    f"{API_BASE_URL}/hype/score",
-                    json=hype_payload,
-                    timeout=10
-                )
-                hype_score = hype_response.json()
-                
-                insights_df = insight_visualizer(insights, insight_type, location, category)
-                predictions_df = prediction_dashboard(predictions, hype_score)
-                
-                if hype_score.get("hourly_sentiment_change"):
-                    st.metric("Hourly Sentiment Change", f"{hype_score['hourly_sentiment_change']}%")
-                
-                data_quality_widget()
-                llm_data_quality_widget()
-                
-                buffer, filename, mime = export_report(insights_df, predictions_df, export_format)
-                if buffer:
-                    st.download_button(
-                        label=f"Download Report as {export_format}",
-                        data=buffer,
-                        file_name=filename,
-                        mime=mime
+    with tab1:
+        user_id = st.text_input("User ID", help="Enter your user ID", key="user_id")
+        location, category, insight_type, threshold = market_selector()
+        keywords = product_keywords()
+        description = product_description()
+        export_format = st.selectbox("Export Format", ["PDF", "Excel", "CSV"], key="export_format")
+        
+        if user_id:
+            marked_products = get_marked_products(user_id)
+            if marked_products:
+                st.subheader("Marked Products")
+                for product in marked_products:
+                    st.write(f"{product['product_name']} ({product['category']})")
+        
+        if st.button("Generate Insights and Predictions", key="submit"):
+            with st.spinner("Fetching insights and predictions..."):
+                try:
+                    insights_response = requests.get(
+                        f"{API_BASE_URL}/insights/{location}/{category}?insight_type={insight_type}",
+                        timeout=10
                     )
-                
-                discord_payload = {"prediction": {"product": product, **predictions.get("data", {})}, "hype_data": hype_score}
-                requests.post(f"{API_BASE_URL}/discord/alert", json=discord_payload, timeout=5)
-                
-                integrations_payload = {"prediction": {"product": product, **predictions.get("data", {})}, "hype_data": hype_score}
-                requests.post(f"{API_BASE_URL}/integrations/send", json=integrations_payload, timeout=5)
-                
-            except requests.RequestException as e:
-                logger.error(f"API request failed: {str(e)}")
-                st.error(f"API request failed: {str(e)}")
-            except Exception as e:
-                logger.error(f"An error occurred: {str(e)}")
-                st.error(f"An error occurred: {str(e)}")
+                    insights = insights_response.json() if insights_response.status_code == 200 else {}
+                    
+                    product = {
+                        "name": ", ".join(keywords) or category,
+                        "category": category,
+                        "description": description or f"{category} product"
+                    }
+                    
+                    if st.checkbox("Mark this product for sentiment tracking", key="mark_product"):
+                        mark_product(user_id, product["name"], category)
+                    
+                    prediction_payload = {"product": product, "insights": insights}
+                    prediction_response = requests.post(
+                        f"{API_BASE_URL}/predict/demand",
+                        json=prediction_payload,
+                        timeout=10
+                    )
+                    predictions = prediction_response.json() if prediction_response.status_code == 200 else {}
+                    
+                    hype_payload = {"insights": insights, "category": category, "location": location, "threshold": threshold, "product_name": product["name"]}
+                    hype_response = requests.post(
+                        f"{API_BASE_URL}/hype/score",
+                        json=hype_payload,
+                        timeout=10
+                    )
+                    hype_score = hype_response.json()
+                    
+                    insights_df = insight_visualizer(insights, insight_type, location, category)
+                    predictions_df = prediction_dashboard(predictions, hype_score)
+                    
+                    if hype_score.get("hourly_sentiment_change"):
+                        st.metric("Hourly Sentiment Change", f"{hype_score['hourly_sentiment_change']}%")
+                    
+                    data_quality_widget()
+                    llm_data_quality_widget()
+                    
+                    buffer, filename, mime = export_report(insights_df, predictions_df, export_format)
+                    if buffer:
+                        st.download_button(
+                            label=f"Download Report as {export_format}",
+                            data=buffer,
+                            file_name=filename,
+                            mime=mime
+                        )
+                    
+                    discord_payload = {"prediction": {"product": product, **predictions.get("data", {})}, "hype_data": hype_score}
+                    requests.post(f"{API_BASE_URL}/discord/alert", json=discord_payload, timeout=5)
+                    
+                    integrations_payload = {"prediction": {"product": product, **predictions.get("data", {})}, "hype_data": hype_score}
+                    requests.post(f"{API_BASE_URL}/integrations/send", json=integrations_payload, timeout=5)
+                    
+                except requests.RequestException as e:
+                    logger.error(f"API request failed: {str(e)}")
+                    st.error(f"API request failed: {str(e)}")
+                except Exception as e:
+                    logger.error(f"An error occurred: {str(e)}")
+                    st.error(f"An error occurred: {str(e)}")
+    
+    with tab2:
+        st.header("Store Data Management")
+        user_provided_store_data()
+        
+        # Show existing store data
+        st.subheader("Existing Store Data")
+        conn = sqlite3.connect(DB_PATH)
+        store_df = pd.read_sql_query("SELECT product, sales, date FROM store_data", conn)
+        conn.close()
+        
+        if not store_df.empty:
+            st.dataframe(store_df)
+            st.download_button(
+                label="Download Store Data as CSV",
+                data=store_df.to_csv(index=False).encode('utf-8'),
+                file_name="store_data.csv",
+                mime="text/csv"
+            )
+        else:
+            st.info("No store data available")
+    
+    with tab3:
+        st.header("Google Trends Integration")
+        fetch_and_display_trends()
+        
+        # Show existing trends data
+        st.subheader("Existing Trends Data")
+        conn = sqlite3.connect(DB_PATH)
+        trends_df = pd.read_sql_query(
+            "SELECT text AS keyword, likes AS interest, timestamp FROM social_data WHERE source='google_trends'", 
+            conn
+        )
+        conn.close()
+        
+        if not trends_df.empty:
+            st.dataframe(trends_df)
+            st.download_button(
+                label="Download Trends Data as CSV",
+                data=trends_df.to_csv(index=False).encode('utf-8'),
+                file_name="trends_data.csv",
+                mime="text/csv"
+            )
+        else:
+            st.info("No trends data available")
 
 if __name__ == "__main__":
     main()
