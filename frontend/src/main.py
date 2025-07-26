@@ -1,22 +1,23 @@
-from api.utils.logging import setup_logging
-logger = setup_logging()
 import streamlit as st
 import requests
 import json
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table
+import openpyxl
+from io import BytesIO
 import logging
+from api.utils.logging import setup_logging
 
-# Initialize logging
+logger = setup_logging()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Configuration
 API_BASE_URL = "http://localhost:8000"  # Update to Heroku URL after deployment
 st.set_page_config(page_title="CÆSER Dashboard", layout="wide")
 
-# Custom CSS
 st.markdown("""
     <style>
         .market-selector__dropdown { margin-bottom: 1rem; }
@@ -24,6 +25,7 @@ st.markdown("""
         .prediction-dashboard__container { padding: 1rem; background-color: #f9f9f9; border-radius: 8px; }
         .product-keywords__input { width: 100%; }
         .product-description__textarea { width: 100%; min-height: 100px; }
+        .data-quality__widget { background-color: #f0f0f0; padding: 1rem; border-radius: 8px; }
         @media (max-width: 768px) {
             .market-selector__dropdown { font-size: 14px; }
             .insight-visualizer__chart { height: 300px; }
@@ -36,7 +38,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# MarketSelector Component
 def market_selector():
     st.subheader("Select Market and Category")
     col1, col2, col3 = st.columns(3)
@@ -45,23 +46,20 @@ def market_selector():
     with col2:
         category = st.selectbox("Category", ["sneakers", "electronics", "fashion"], key="category")
     with col3:
-        threshold = st.number_input("Alert Threshold (%)", min_value=0.0, max_value=100.0, value=20.0, step=1.0)
+        threshold = st.number_input("Hype Change Threshold (%)", min_value=0.0, max_value=100.0, value=20.0, step=1.0)
     insight_type = st.selectbox("Insight Type", ["brand", "demographics", "heatmap"], key="insight_type")
     return location, category, insight_type, threshold
 
-# ProductKeywords Component
 def product_keywords():
     st.subheader("Product Keywords")
     keywords = st.text_input("Enter keywords (comma-separated)", help="e.g., sneakers, streetwear")
     return [k.strip() for k in keywords.split(",") if k.strip()] if keywords else []
 
-# ProductDescription Component
 def product_description():
     st.subheader("Product Description")
     description = st.text_area("Enter product description")
     return description.strip() if description else ""
 
-# InsightVisualizer Component
 def insight_visualizer(insights, insight_type, location, category):
     st.subheader("Cultural Insights")
     if not insights or not insights.get("success"):
@@ -91,19 +89,18 @@ def insight_visualizer(insights, insight_type, location, category):
             return df
         
         elif insight_type == "heatmap":
-            z = [[0.8, 0.6, 0.9], [0.7, 0.85, 0.75], [0.9, 0.8, 0.95]]
-            df = pd.DataFrame(z, columns=["North America", "Europe", "Asia"], index=["Fashion", "Electronics", "Home"])
-            fig = go.Figure(data=go.Heatmap(
-                z=z,
-                x=["North America", "Europe", "Asia"],
-                y=["Fashion", "Electronics", "Home"],
-                colorscale="Viridis"
-            ))
+            heatmap_data = insights["data"].get("heatmap", {})
+            if not heatmap_data:
+                st.warning("No heatmap data available.")
+                return None
+            z = heatmap_data.get("z", [])
+            x = heatmap_data.get("x", [])
+            y = heatmap_data.get("y", [])
+            fig = go.Figure(data=go.Heatmap(z=z, x=x, y=y, colorscale="Viridis"))
             fig.update_layout(title="Regional Affinity Heatmap")
             st.plotly_chart(fig, use_container_width=True)
-            return df
+            return pd.DataFrame(z, columns=x, index=y)
         
-        # Time Series Plot for Hype Scores
         history_response = requests.get(f"{API_BASE_URL}/hype/history/{location}/{category}", timeout=10)
         history = history_response.json() if history_response.status_code == 200 else {"data": []}
         if history["data"]:
@@ -117,7 +114,6 @@ def insight_visualizer(insights, insight_type, location, category):
         st.error(f"Error rendering insights: {str(e)}")
         return None
 
-# PredictionDashboard Component
 def prediction_dashboard(predictions, hype_score):
     st.subheader("Demand Predictions and Strategies")
     if not predictions or not predictions.get("success"):
@@ -127,6 +123,7 @@ def prediction_dashboard(predictions, hype_score):
     col1, col2 = st.columns(2)
     with col1:
         st.metric("Demand Uplift", f"{predictions['data'].get('uplift', 'Unknown')}%")
+        st.metric("Confidence Score", f"{predictions['data'].get('confidence', 'Unknown')}")
         st.metric("Hype Score", f"{hype_score.get('averageScore', 'Unknown')}")
         if hype_score.get("change_detected", False):
             st.warning(f"Significant change detected: {hype_score['change_percent']}%")
@@ -134,39 +131,120 @@ def prediction_dashboard(predictions, hype_score):
         st.write("**Recommended Strategy**")
         st.write(predictions["data"].get("strategy", "Unknown"))
     
-    df = pd.DataFrame({
-        "Month": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-        "Demand": [120, 190, 300, 500, 200, 300]
-    })
-    fig = px.line(df, x="Month", y="Demand", title="Demand Trends",
-                  color_discrete_sequence=["#667eea"])
-    st.plotly_chart(fig, use_container_width=True)
+    trend_data = predictions["data"].get("trend", [])
+    if trend_data:
+        df = pd.DataFrame(trend_data)
+        fig = px.line(df, x="time", y="demand", title="Demand Trends",
+                      color_discrete_sequence=["#667eea"])
+        st.plotly_chart(fig, use_container_width=True)
+        return df
+    else:
+        st.warning("No trend data available.")
+    
     return pd.DataFrame({
-        "Metric": ["Demand Uplift", "Hype Score", "Strategy"],
-        "Value": [f"{predictions['data'].get('uplift', 'Unknown')}%", 
-                  f"{hype_score.get('averageScore', 'Unknown')}", 
+        "Metric": ["Demand Uplift", "Confidence Score", "Hype Score", "Strategy"],
+        "Value": [f"{predictions['data'].get('uplift', 'Unknown')}%",
+                  f"{predictions['data'].get('confidence', 'Unknown')}",
+                  f"{hype_score.get('averageScore', 'Unknown')}",
                   predictions["data"].get("strategy", "Unknown")]
     })
 
-# Export Report Function
-def export_report(insights_df, predictions_df):
+def export_report(insights_df, predictions_df, format_type):
     if insights_df is not None and predictions_df is not None:
         report_df = pd.concat([insights_df, predictions_df], axis=1, keys=["Insights", "Predictions"])
-        csv = report_df.to_csv(index=False)
-        st.download_button(
-            label="Export Report as CSV",
-            data=csv,
-            file_name="caeser_report.csv",
-            mime="text/csv"
-        )
+        if format_type == "PDF":
+            buffer = BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=letter)
+            data = [report_df.columns.tolist()] + report_df.values.tolist()
+            table = Table(data)
+            doc.build([table])
+            buffer.seek(0)
+            return buffer, "caeser_report.pdf", "application/pdf"
+        elif format_type == "Excel":
+            buffer = BytesIO()
+            report_df.to_excel(buffer, index=False, engine="openpyxl")
+            buffer.seek(0)
+            return buffer, "caeser_report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        elif format_type == "CSV":
+            buffer = BytesIO()
+            report_df.to_csv(buffer, index=False, encoding='utf-8')
+            buffer.seek(0)
+            return buffer, "caeser_report.csv", "text/csv"
+    return None, None, None
 
-# Main App Logic
+def data_quality_widget():
+    st.subheader("Data Quality Report")
+    try:
+        response = requests.get(f"{API_BASE_URL}/data_quality", timeout=5)
+        metrics = response.json() if response.status_code == 200 else {}
+        if metrics.get("success"):
+            st.markdown('<div class="data-quality__widget">', unsafe_allow_html=True)
+            st.write(f"**Missing Values**: {metrics['data'].get('missing_values', {}).get('value', 0)}")
+            st.write(f"**API Errors**: {metrics['data'].get('api_errors', {}).get('value', 0)}")
+            st.write(f"**Freshness**: {metrics['data'].get('freshness', {}).get('value', 'Unknown'):.2f} hours")
+            st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.warning("No data quality metrics available.")
+    except Exception as e:
+        logger.error(f"Error fetching data quality: {str(e)}")
+        st.error(f"Error fetching data quality: {str(e)}")
+# [Remaining content unchanged]
+
+def llm_data_quality_widget():
+    st.subheader("LLM Data Quality Report")
+    try:
+        response = requests.get(f"{API_BASE_URL}/llm_data_quality", timeout=5)
+        metrics = response.json() if response.status_code == 200 else {}
+        if metrics.get("success"):
+            st.markdown('<div class="data-quality__widget">', unsafe_allow_html=True)
+            confidence = metrics['data'].get('confidence', {})
+            st.write(f"**Average Confidence**: {confidence.get('avg_value', 'N/A'):.2f}")
+            errors = metrics['data'].get('errors', {})
+            st.write(f"**Error Count**: {errors.get('count', 0)}")
+            response_time = metrics['data'].get('response_time', {})
+            st.write(f"**Average Response Time**: {response_time.get('avg_value', 'N/A'):.2f} seconds")
+            st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.warning("No LLM data quality metrics available.")
+    except Exception as e:
+        logger.error(f"Error fetching LLM data quality: {str(e)}")
+        st.error(f"Error fetching LLM data quality: {str(e)}")
+
+def mark_product(user_id, product_name, category):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO marked_products (user_id, product_name, category)
+        VALUES (?, ?, ?)
+    """, (user_id, product_name, category))
+    conn.commit()
+    conn.close()
+
+def get_marked_products(user_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT product_name, category FROM marked_products WHERE user_id = ?
+    """, (user_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [{"product_name": row[0], "category": row[1]} for row in rows]
+
 def main():
     st.title("CÆSER: Cultural Affinity Simulation Engine for Retail")
     
+    user_id = st.text_input("User ID", help="Enter your user ID")
     location, category, insight_type, threshold = market_selector()
     keywords = product_keywords()
     description = product_description()
+    export_format = st.selectbox("Export Format", ["PDF", "Excel", "CSV"], key="export_format")
+    
+    if user_id:
+        marked_products = get_marked_products(user_id)
+        if marked_products:
+            st.subheader("Marked Products")
+            for product in marked_products:
+                st.write(f"{product['product_name']} ({product['category']})")
     
     if st.button("Generate Insights and Predictions", key="submit"):
         with st.spinner("Fetching insights and predictions..."):
@@ -182,6 +260,10 @@ def main():
                     "category": category,
                     "description": description or f"{category} product"
                 }
+                
+                if st.checkbox("Mark this product for sentiment tracking", key="mark_product"):
+                    mark_product(user_id, product["name"], category)
+                
                 prediction_payload = {"product": product, "insights": insights}
                 prediction_response = requests.post(
                     f"{API_BASE_URL}/predict/demand",
@@ -190,20 +272,37 @@ def main():
                 )
                 predictions = prediction_response.json() if prediction_response.status_code == 200 else {}
                 
-                hype_payload = {"insights": insights, "category": category, "location": location, "threshold": threshold}
-                hype_score = requests.post(
+                hype_payload = {"insights": insights, "category": category, "location": location, "threshold": threshold, "product_name": product["name"]}
+                hype_response = requests.post(
                     f"{API_BASE_URL}/hype/score",
                     json=hype_payload,
                     timeout=10
-                ).json()
+                )
+                hype_score = hype_response.json()
                 
                 insights_df = insight_visualizer(insights, insight_type, location, category)
                 predictions_df = prediction_dashboard(predictions, hype_score)
                 
-                export_report(insights_df, predictions_df)
+                if hype_score.get("hourly_sentiment_change"):
+                    st.metric("Hourly Sentiment Change", f"{hype_score['hourly_sentiment_change']}%")
+                
+                data_quality_widget()
+                llm_data_quality_widget()
+                
+                buffer, filename, mime = export_report(insights_df, predictions_df, export_format)
+                if buffer:
+                    st.download_button(
+                        label=f"Download Report as {export_format}",
+                        data=buffer,
+                        file_name=filename,
+                        mime=mime
+                    )
                 
                 discord_payload = {"prediction": {"product": product, **predictions.get("data", {})}, "hype_data": hype_score}
                 requests.post(f"{API_BASE_URL}/discord/alert", json=discord_payload, timeout=5)
+                
+                integrations_payload = {"prediction": {"product": product, **predictions.get("data", {})}, "hype_data": hype_score}
+                requests.post(f"{API_BASE_URL}/integrations/send", json=integrations_payload, timeout=5)
                 
             except requests.RequestException as e:
                 logger.error(f"API request failed: {str(e)}")

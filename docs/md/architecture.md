@@ -36,6 +36,7 @@ graph TD
 - **Internal**:
   - api → data (data access)
   - frontend → api (data fetching)
+- **scrapers/**: Web scraping scripts (e.g., `social_media_spider.py`)
 
 ## Interface Contracts
 1. API endpoints:
