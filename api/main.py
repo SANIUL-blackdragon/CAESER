@@ -377,12 +377,24 @@ async def submit_outcome(data: dict):
     try:
         prediction_id = data.get("prediction_id")
         actual_uplift = data.get("actual_uplift")
-        if not prediction_id or actual_uplift is None:
-            return {"success": False, "message": "Missing prediction_id or actual_uplift"}
+
+        # Validate prediction_id and actual_uplift
+        if not prediction_id or not isinstance(prediction_id, int) or prediction_id <= 0:
+            return {"success": False, "message": "Invalid prediction_id. It must be a positive integer."}
         
+        if actual_uplift is None or not isinstance(actual_uplift, (int, float)):
+            return {"success": False, "message": "Invalid actual_uplift. It must be a number."}
+
         timestamp = datetime.now(pytz.utc).isoformat()
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
+
+        # Check if the prediction_id exists in the predictions table
+        cursor.execute("SELECT COUNT(*) FROM predictions WHERE id = ?", (prediction_id,))
+        if cursor.fetchone()[0] == 0:
+            conn.close()
+            return {"success": False, "message": f"No prediction found with ID {prediction_id}"}
+
         cursor.execute("""
             INSERT INTO outcomes (prediction_id, actual_uplift, timestamp)
             VALUES (?, ?, ?)
@@ -391,6 +403,9 @@ async def submit_outcome(data: dict):
         conn.close()
         logger.info(f"Submitted outcome for prediction ID {prediction_id}")
         return {"success": True, "message": "Outcome submitted successfully"}
+    except Exception as e:
+        logger.error(f"Failed to submit outcome: {str(e)}")
+        return {"success": False, "message": f"Failed to submit outcome: {str(e)}"}
     finally:
         dur = (time.time() - start) * 1000
         sqlite3.connect(DB_PATH).execute(

@@ -3,6 +3,7 @@ import pandas as pd
 import sqlite3
 import os
 from datetime import datetime
+import requests
 
 DB_PATH = os.getenv("DB_PATH", "../data/caeser.db")
 
@@ -20,11 +21,26 @@ def init_spending_table():
     conn.commit()
     conn.close()
 
+def fetch_credit_card_data():
+    # Example: Fetch data from a hypothetical credit card API
+    url = "https://api.creditcard.com/v1/transactions"
+    headers = {"Authorization": f"Bearer {os.getenv('CREDIT_CARD_API_KEY')}"}
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        logger.error(f"Failed to fetch credit card data: {str(e)}")
+        return []
+
 def store_spending_data():
-    mock_data = pd.DataFrame({"category": ["sneakers"], "spend_total": [1000.0]})
+    data = fetch_credit_card_data()
+    if not data:
+        return
+    df = pd.DataFrame(data)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    for _, row in mock_data.iterrows():
+    for _, row in df.iterrows():
         cursor.execute("""
             INSERT INTO spending_data (category, spend_total, timestamp)
             VALUES (?, ?, ?)

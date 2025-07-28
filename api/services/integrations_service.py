@@ -24,6 +24,7 @@ def get_google_sheets_service():
     try:
         creds = Credentials.from_service_account_info(json.loads(GOOGLE_SHEETS_CREDENTIALS))
         service = build('sheets', 'v4', credentials=creds)
+        logger.info("Google Sheets service initialized successfully")
         return service
     except Exception as e:
         logger.error(f"Failed to initialize Google Sheets service: {str(e)}")
@@ -65,6 +66,10 @@ def append_to_google_sheets(prediction, hype_data):
         return {"success": False, "message": f"Failed to append to Google Sheets: {str(e)}"}
 
 def get_salesforce_access_token():
+    if not all([SALESFORCE_CLIENT_ID, SALESFORCE_CLIENT_SECRET, SALESFORCE_USERNAME, SALESFORCE_PASSWORD, SALESFORCE_TOKEN, SALESFORCE_INSTANCE_URL]):
+        logger.error("Salesforce configuration missing")
+        return None
+    
     auth_url = f"{SALESFORCE_INSTANCE_URL}/services/oauth2/token"
     payload = {
         'grant_type': 'password',
@@ -76,16 +81,17 @@ def get_salesforce_access_token():
     try:
         response = requests.post(auth_url, data=payload, timeout=5)
         response.raise_for_status()
-        return response.json().get('access_token')
+        access_token = response.json().get('access_token')
+        if not access_token:
+            logger.error("Failed to get Salesforce access token: No access token in response")
+            return None
+        logger.info("Salesforce access token obtained successfully")
+        return access_token
     except requests.RequestException as e:
         logger.error(f"Failed to get Salesforce access token: {str(e)}")
         return None
 
 def create_salesforce_record(prediction, hype_data):
-    if not all([SALESFORCE_CLIENT_ID, SALESFORCE_CLIENT_SECRET, SALESFORCE_USERNAME, SALESFORCE_PASSWORD, SALESFORCE_TOKEN, SALESFORCE_INSTANCE_URL]):
-        logger.error("Salesforce configuration missing")
-        return {"success": False, "message": "Salesforce configuration missing"}
-    
     access_token = get_salesforce_access_token()
     if not access_token:
         return {"success": False, "message": "Failed to get Salesforce access token"}

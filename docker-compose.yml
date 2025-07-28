@@ -1,0 +1,22 @@
+version: "1.00.0"
+services:
+  caeser-api:
+    build: .
+    ports: ["8000:8000"]
+    env_file: .env
+    volumes: ["./data:/app/data"]
+    restart: unless-stopped
+
+  caeser-frontend:
+    image: python:3.11-slim
+    working_dir: /app
+    command: >
+      sh -c "
+        pip install streamlit requests python-dotenv plotly openpyxl reportlab &&
+        streamlit run frontend/src/main.py --server.port=8501 --server.address=0.0.0.0
+      "
+    ports: ["8501:8501"]
+    env_file: .env
+    volumes: [".:/app"]
+    depends_on: [caeser-api]
+    restart: unless-stopped

@@ -118,8 +118,12 @@ def calculate_hype_score(insights: Dict, category: str, location: str, threshold
         popularity = sum(entity["properties"].get("popularity", 0.5) for entity in entities) / len(entities) if entities else 0.5
         trend_factor = insights["data"].get("trend", 1.0)
         base_score = popularity * 100 * trend_factor
-        simulation_noise = random.uniform(-10, 10)
-        hype_score = max(0.0, min(100.0, base_score + simulation_noise))
+        
+        # Use real data or a sophisticated model instead of random noise
+        # For example, we can use historical data to simulate the noise
+        # Here, we assume we have a function `get_historical_noise` that returns noise based on historical data
+        historical_noise = get_historical_noise(category, location, product_name)
+        hype_score = max(0.0, min(100.0, base_score + historical_noise))
         
         social_texts = get_social_data(category)
         if social_texts:
@@ -183,3 +187,13 @@ def calculate_hype_score(insights: Dict, category: str, location: str, threshold
             "confidence_weight": 0.0,
             "message": f"Failed to calculate hype score: {str(e)}"
         }
+
+def get_historical_noise(category: str, location: str, product_name: str = None) -> float:
+    """
+    Fetch historical noise data based on category, location, and product name.
+    This function should be implemented to fetch real historical data.
+    For now, it returns a placeholder value.
+    """
+    # Placeholder implementation
+    # In a real scenario, this function would fetch historical data and compute the noise
+    return 0.0  # Replace with actual historical noise calculation

@@ -15,6 +15,8 @@ import os
 import sys
 import pandas as pd
 from datetime import datetime
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables from .env file
 
 # Add scrapers directory to path for Google Trends import
 sys.path.append('../scrapers')
@@ -24,8 +26,8 @@ logger = setup_logging()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-API_BASE_URL = "http://localhost:8000"  # Update to Heroku URL after deployment
-DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
+import os
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
 st.set_page_config(page_title="CÆSER Dashboard", layout="wide")
 
 st.markdown("""

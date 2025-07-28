@@ -172,7 +172,8 @@ foreach ($file in $allFiles) {
                 default { 'text' }
             }
             
-            $codeBlock = "``````$language`n$content`n``````"
+            $codeBlock = "````````$language
+`n$content`n``````"
             Add-Content -Path $OutputPath -Value $codeBlock
             $stats.ProcessedFiles++
         }
