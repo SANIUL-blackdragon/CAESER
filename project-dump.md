@@ -1,102 +1,9 @@
 ﻿# Project Dump: D:\LAPTOP\TO_EARN\AI\CAESER
-Generated: 2025-07-28 22:16:43
+Generated: 2025-07-29 01:21:37
 Max File Size: 10MB
 
 ---
 
-# README.md
-
-# CAESER Project
-
-## Overview
-CAESER is a full-stack application combining data processing, API services, and frontend visualization. The system includes:
-- Python backend services
-- Web frontend
-- Data scrapers and processors
-- Database integration
-
-## Setup Instructions
-
-### Prerequisites
-- Python 3.9+
-- Node.js 16+
-- SQLite (included)
-- Docker (optional)
-
-### Installation
-1. Clone the repository
-2. Install backend dependencies:
-```bash
-pip install -r requirements.txt
-```
-3. Install frontend dependencies:
-```bash
-cd frontend
-npm install
-```
-
-### Configuration
-1. Copy `.env.example` to `.env` and configure environment variables
-2. Initialize database:
-```bash
-python data/init_db.py
-```
-
-## Project Structure
-
-```
-├── api/               # Backend services
-├── data/              # Data processing and storage
-├── frontend/          # Frontend application  
-├── migrations/        # Database migrations
-├── notebooks/         # Jupyter notebooks
-├── scrapers/          # Data collection scripts
-├── tests/             # Test cases
-```
-
-## Usage
-
-### Running the Application
-Start backend:
-```bash
-python api/main.py
-```
-
-Start frontend:
-```bash
-cd frontend
-npm run dev
-```
-
-### Docker
-```bash
-docker-compose up --build
-```
-
-## Contributing
-
-### Code of Conduct
-- Be respectful and inclusive
-- Keep discussions professional
-- No harassment of any kind
-
-### Contribution Guidelines
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request with:
-   - Clear description of changes
-   - Relevant tests
-   - Updated documentation
-
-## Troubleshooting
-
-### Common Issues
-- **Database connection errors**: Verify `.env` configuration
-- **Missing dependencies**: Run `pip install -r requirements.txt` and `npm install`
-- **Frontend not loading**: Check console for errors
-
-## License
-This project is licensed under the [MIT License](LICENSE) for personal and non-commercial use only.
 
 ## File: .env
 
@@ -135,6 +42,96 @@ TWITTER_API_KEY=your_twitter_api_key
 TWITTER_API_SECRET=your_twitter_api_secret
 TWITTER_ACCESS_TOKEN=your_twitter_access_token
 TWITTER_ACCESS_TOKEN_SECRET=your_twitter_access_token_secret
+PROXY_LIST=proxy1,proxy2,proxy3
+`
+
+
+## File: .env.example
+
+``$language
+
+# This is a template for the .env file. Replace the placeholder values with your own configuration.
+
+# API Keys
+# Obtain your Qloo API key by contacting Qloo at support@qloo.com
+QLOO_API_KEY=your_qloo_api_key
+
+# Obtain your OpenRouter API key by signing up at https://openrouter.ai
+OPENROUTER_API_KEY=your_openrouter_api_key
+
+# Database Configuration
+# Path to the SQLite database file (you can change this if needed)
+DB_PATH=./data/caeser.db
+
+# API Base URL for deployment
+# Default is localhost for development; update for production if necessary
+API_BASE_URL=http://localhost:8000
+
+# Email Configuration
+# SMTP host for sending emails (e.g., smtp.gmail.com for Gmail)
+EMAIL_HOST=smtp.gmail.com
+
+# SMTP port (usually 587 for TLS)
+EMAIL_PORT=587
+
+# Your email address for sending emails
+EMAIL_USER=your_email@gmail.com
+
+# Your email password or app-specific password (for Gmail, use an app password)
+EMAIL_PASSWORD=your_app_password
+
+# Recipient email address for notifications
+EMAIL_RECIPIENT=recipient@example.com
+
+# Slack Webhook URL for notifications
+# Set up a webhook in your Slack workspace at https://slack.com/apps/A0F7XDUAZ-incoming-webhooks
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/your/webhook/url
+
+# Google Sheets Configuration
+# Your Google Sheets API key (enable the API in Google Cloud Console)
+GOOGLE_SHEETS_API_KEY=your_google_sheets_api_key
+
+# Service account credentials JSON for Google Sheets
+# Replace with your own service account credentials JSON
+GOOGLE_SHEETS_CREDENTIALS={"type": "service_account", "project_id": "your_project_id", ...}
+
+# ID of the Google Spreadsheet to use
+SPREADSHEET_ID=your_spreadsheet_id
+
+# Salesforce Configuration
+# Your Salesforce client ID (from your connected app)
+SALESFORCE_CLIENT_ID=your_client_id
+
+# Your Salesforce client secret
+SALESFORCE_CLIENT_SECRET=your_client_secret
+
+# Your Salesforce username
+SALESFORCE_USERNAME=your_username
+
+# Your Salesforce password
+SALESFORCE_PASSWORD=your_password
+
+# Your Salesforce security token
+SALESFORCE_TOKEN=your_security_token
+
+# Your Salesforce instance URL
+SALESFORCE_INSTANCE_URL=https://your_instance.salesforce.com
+
+# Twitter API Configuration
+# Your Twitter API key (from Twitter Developer Portal)
+TWITTER_API_KEY=your_twitter_api_key
+
+# Your Twitter API secret
+TWITTER_API_SECRET=your_twitter_api_secret
+
+# Your Twitter access token
+TWITTER_ACCESS_TOKEN=your_twitter_access_token
+
+# Your Twitter access token secret
+TWITTER_ACCESS_TOKEN_SECRET=your_twitter_access_token_secret
+
+# Proxy List (optional)
+# Comma-separated list of proxy URLs for scraping tasks
 PROXY_LIST=proxy1,proxy2,proxy3
 `
 
@@ -816,6 +813,33 @@ datefmt = %H:%M:%S
 `
 
 
+## File: deploy_monitors.py
+
+``$language
+
+import os
+import shutil
+
+# Directories to skip
+SKIP_DIRS = {'.git', 'node_modules', '__pycache__', 'venv'}
+
+# Source monitoring script
+SOURCE_FILE = '.usage_monitor.py'
+
+def deploy_monitors():
+    for root, dirs, files in os.walk('.'):
+        # Skip unwanted directories
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        
+        target_path = os.path.join(root, SOURCE_FILE)
+        if not os.path.exists(target_path):
+            shutil.copy(SOURCE_FILE, target_path)
+            print(f"Deployed to {target_path}")
+
+if __name__ == "__main__":
+    deploy_monitors()
+`
+
 
 ## File: docker-compose.yml
 
@@ -871,23 +895,23 @@ CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ``$language
 
-MIT License
+Modified MIT License with Commercial Use Restriction
+
+Summary: This license allows you to use, modify, and distribute the software for personal and non-commercial purposes. If you want to use the software for commercial purposes, you need to get written permission from the author.
+
+Full License Text:
 
 Copyright (c) 2025 SANIUL-blackdragon (mdalifsaniul@gmail.com)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software for personal and non-commercial purposes only. Commercial use 
-and monetization are expressly prohibited without explicit written permission 
-from the author.
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+2. The Software may not be used for commercial purposes without explicit written permission from the author. "Commercial purposes" means any use of the Software that is intended to generate profit or revenue, whether directly or indirectly, such as using the Software in a business setting, selling the Software, or incorporating it into a revenue-generating product or service.
+
+To request permission for commercial use, please contact the author at mdalifsaniul@gmail.com.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 `
 
 
@@ -921,7 +945,6 @@ function Show-Tree {
 # Run the function
 Show-Tree
 `
-
 ## TREE
 
 +-- api/
@@ -996,6 +1019,7 @@ Show-Tree
 |   |-- social_media_spider.py
 +-- tests/
 |-- .env
+|-- .env.example
 |-- .gitignore
 |-- alembic.ini
 |-- caeser_visuals.html
@@ -1008,11 +1032,11 @@ Show-Tree
 |-- package.json
 |-- project-dump.md
 |-- ProjectDumper - Copy.ps1
-|-- ProjectDumper.ps1
 |-- README.md
 |-- requirements.txt
 |-- tree.ps1
 
+## File: api\
 
 
 ## File: api\cron.py
@@ -1699,6 +1723,19 @@ async def competitors():
 
 logger.info('API initialized successfully')
 `
+
+
+## File: api\controllers\
+
+
+## File: api\models\
+
+
+## File: api\routes\
+
+
+## File: api\services\
+
 
 ## File: api\services\data_quality_service.py
 
@@ -2491,8 +2528,7 @@ def get_cultural_insights(location: str, category: str, insight_type: str = "bra
 `
 
 
-## File: api\utils\.usage_monitor.py
-
+## File: api\utils\
 
 
 ## File: api\utils\logging.py
@@ -2533,16 +2569,13 @@ def setup_logging(name: str = __name__, level: int = logging.INFO, log_file: str
 `
 
 
-## File: bin\.usage_monitor.py
+## File: bin\
 
 
-
-## File: bin\sqlite\.usage_monitor.py
-
+## File: bin\sqlite\
 
 
-## File: data\.usage_monitor.py
-
+## File: data\
 
 
 ## File: data\init_db.py
@@ -2560,36 +2593,28 @@ if __name__ == "__main__":
 `
 
 
-## File: data\processed\.usage_monitor.py
+## File: data\processed\
 
 
-
-## File: data\raw\.usage_monitor.py
-
+## File: data\raw\
 
 
-## File: data\schemas\.usage_monitor.py
+## File: data\schemas\
 
 
-
-## File: docs\.usage_monitor.py
-
+## File: docs\
 
 
-## File: frontend\.usage_monitor.py
+## File: frontend\
 
 
-
-## File: frontend\components\.usage_monitor.py
-
+## File: frontend\components\
 
 
-## File: frontend\public\.usage_monitor.py
+## File: frontend\public\
 
 
-
-## File: frontend\src\.usage_monitor.py
-
+## File: frontend\src\
 
 
 ## File: frontend\src\main.py
@@ -3095,12 +3120,10 @@ if st.button("Submit"):
 `
 
 
-## File: frontend\styles\.usage_monitor.py
+## File: frontend\styles\
 
 
-
-## File: migrations\.usage_monitor.py
-
+## File: migrations\
 
 
 ## File: migrations\env.py
@@ -3233,8 +3256,7 @@ def downgrade() -> None:
 `
 
 
-## File: migrations\versions\.usage_monitor.py
-
+## File: migrations\versions\
 
 
 ## File: migrations\versions\4c0ff554c6e2_initial_migration.py
@@ -3277,8 +3299,10 @@ def downgrade():
 `
 
 
-## File: notebooks\.usage_monitor.py
+## File: notebooks\
 
+
+## File: scrapers\
 
 
 ## File: scrapers\affiliate_purchases.py
@@ -3726,5 +3750,5 @@ if __name__ == "__main__":
 
 ---
 ## Summary
-Total files processed: 51
-Completed: 2025-07-28 22:17:02
+Total files processed: 52
+Completed: 2025-07-29 01:21:59

@@ -13,7 +13,6 @@ from api.utils.logging import setup_logging
 import sqlite3
 import os
 import sys
-import pandas as pd
 from datetime import datetime
 from dotenv import load_dotenv
 load_dotenv()  # Load environment variables from .env file
@@ -26,8 +25,8 @@ logger = setup_logging()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-import os
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
 st.set_page_config(page_title="CÆSER Dashboard", layout="wide")
 
 st.markdown("""
@@ -91,8 +90,6 @@ def user_provided_store_data():
             conn.commit()
             conn.close()
             st.success(f"Successfully uploaded {len(df)} store records")
-            
-            # Display uploaded data
             st.dataframe(df.head())
         except Exception as e:
             st.error(f"Error processing file: {str(e)}")
@@ -115,13 +112,10 @@ def fetch_and_display_trends():
                     st.warning("No trends data found")
                     return
                     
-                # Store trends in database
                 for keyword, interest in trends.items():
                     store_trend(keyword, interest)
                 
                 st.success("Trends fetched and stored successfully")
-                
-                # Display trends data
                 trends_df = pd.DataFrame({
                     "Keyword": list(trends.keys()),
                     "Interest": list(trends.values()),
@@ -129,33 +123,27 @@ def fetch_and_display_trends():
                     "Timestamp": datetime.now().isoformat()
                 })
                 st.dataframe(trends_df)
-                
             except Exception as e:
                 st.error(f"Error fetching trends: {str(e)}")
 
-def market_selector():
-    st.subheader("Select Market and Category")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        location = st.selectbox("Location", ["New York, NY", "London", "Tokyo"], key="location")
-    with col2:
-        category = st.selectbox("Category", ["sneakers", "electronics", "fashion"], key="category")
-    with col3:
-        threshold = st.number_input("Hype Change Threshold (%)", min_value=0.0, max_value=100.0, value=20.0, step=1.0)
+def product_input_form():
+    """Form for product details and optional target market"""
+    st.subheader("Product Details")
+    product_name = st.text_input("Product Name", help="e.g., Air Jordan 1")
+    description = st.text_area("Product Description", help="Describe the product")
+    tags = st.text_input("Product Tags (comma-separated)", help="e.g., sneakers, fashion, streetwear")
+
+    st.subheader("Target Market (Optional)")
+    location = st.text_input("Location", help="e.g., New York, NY or leave blank for global")
+    age_range = st.text_input("Age Range", help="e.g., 18-25 or leave blank")
+    gender = st.selectbox("Gender", ["All", "Male", "Female"], index=0)
     insight_type = st.selectbox("Insight Type", ["brand", "demographics", "heatmap"], key="insight_type")
-    return location, category, insight_type, threshold
+    threshold = st.number_input("Hype Change Threshold (%)", min_value=0.0, max_value=100.0, value=20.0, step=1.0)
 
-def product_keywords():
-    st.subheader("Product Keywords")
-    keywords = st.text_input("Enter keywords (comma-separated)", help="e.g., sneakers, streetwear")
-    return [k.strip() for k in keywords.split(",") if k.strip()] if keywords else []
+    return product_name, description, tags, location, age_range, gender, insight_type, threshold
 
-def product_description():
-    st.subheader("Product Description")
-    description = st.text_area("Enter product description")
-    return description.strip() if description else ""
-
-def insight_visualizer(insights, insight_type, location, category):
+def insight_visualizer(insights, insight_type, location, tags):
+    """Visualize cultural insights"""
     st.subheader("Cultural Insights")
     if not insights or not insights.get("success"):
         st.error("Failed to fetch cultural insights. Please try again.")
@@ -195,21 +183,13 @@ def insight_visualizer(insights, insight_type, location, category):
             fig.update_layout(title="Regional Affinity Heatmap")
             st.plotly_chart(fig, use_container_width=True)
             return pd.DataFrame(z, columns=x, index=y)
-        
-        history_response = requests.get(f"{API_BASE_URL}/hype/history/{location}/{category}", timeout=10)
-        history = history_response.json() if history_response.status_code == 200 else {"data": []}
-        if history["data"]:
-            df_history = pd.DataFrame(history["data"])
-            fig_history = px.line(df_history, x="timestamp", y="score", title="Hype Score Trends",
-                                  color_discrete_sequence=["#667eea"])
-            st.plotly_chart(fig_history, use_container_width=True)
-            return df_history
     except Exception as e:
         logger.error(f"Error rendering insights: {str(e)}")
         st.error(f"Error rendering insights: {str(e)}")
         return None
 
 def prediction_dashboard(predictions, hype_score):
+    """Display predictions and strategies"""
     st.subheader("Demand Predictions and Strategies")
     if not predictions or not predictions.get("success"):
         st.error("Failed to generate predictions. Please try again.")
@@ -245,6 +225,7 @@ def prediction_dashboard(predictions, hype_score):
     })
 
 def export_report(insights_df, predictions_df, format_type):
+    """Export analysis report"""
     if insights_df is not None and predictions_df is not None:
         report_df = pd.concat([insights_df, predictions_df], axis=1, keys=["Insights", "Predictions"])
         if format_type == "PDF":
@@ -268,6 +249,7 @@ def export_report(insights_df, predictions_df, format_type):
     return None, None, None
 
 def data_quality_widget():
+    """Display data quality metrics"""
     st.subheader("Data Quality Report")
     try:
         response = requests.get(f"{API_BASE_URL}/data_quality", timeout=5)
@@ -285,6 +267,7 @@ def data_quality_widget():
         st.error(f"Error fetching data quality: {str(e)}")
 
 def llm_data_quality_widget():
+    """Display LLM data quality metrics"""
     st.subheader("LLM Data Quality Report")
     try:
         response = requests.get(f"{API_BASE_URL}/llm_data_quality", timeout=5)
@@ -304,68 +287,66 @@ def llm_data_quality_widget():
         logger.error(f"Error fetching LLM data quality: {str(e)}")
         st.error(f"Error fetching LLM data quality: {str(e)}")
 
-def mark_product(user_id, product_name, category):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO marked_products (user_id, product_name, category)
-        VALUES (?, ?, ?)
-    """, (user_id, product_name, category))
-    conn.commit()
-    conn.close()
-
-def get_marked_products(user_id):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT product_name, category FROM marked_products WHERE user_id = ?
-    """, (user_id,))
-    rows = cursor.fetchall()
-    conn.close()
-    return [{"product_name": row[0], "category": row[1]} for row in rows]
-
 def main():
+    """Main application function"""
     st.title("CÆSER: Cultural Affinity Simulation Engine for Retail")
     
-    # Initialize store data table
     init_store_table()
     
-    # Create tabs for different sections
     tab1, tab2, tab3 = st.tabs(["Main Dashboard", "Store Data", "Google Trends"])
     
     with tab1:
-        user_id = st.text_input("User ID", help="Enter your user ID", key="user_id")
-        location, category, insight_type, threshold = market_selector()
-        keywords = product_keywords()
-        description = product_description()
+        product_name, description, tags, location, age_range, gender, insight_type, threshold = product_input_form()
         export_format = st.selectbox("Export Format", ["PDF", "Excel", "CSV"], key="export_format")
         
-        if user_id:
-            marked_products = get_marked_products(user_id)
-            if marked_products:
-                st.subheader("Marked Products")
-                for product in marked_products:
-                    st.write(f"{product['product_name']} ({product['category']})")
-        
         if st.button("Generate Insights and Predictions", key="submit"):
-            with st.spinner("Fetching insights and predictions..."):
+            if not (product_name and description and tags):
+                st.error("Please fill in all required fields: Product Name, Description, and Tags.")
+                return
+            
+            with st.spinner("Analyzing product..."):
                 try:
+                    # Call analyze endpoint to collect data
+                    analyze_payload = {
+                        "product_name": product_name,
+                        "description": description,
+                        "tags": tags,
+                        "target_area": location if location else None,
+                        "locations": location if location else None,
+                        "gender": gender if gender != "All" else None
+                    }
+                    analyze_response = requests.post(f"{API_BASE_URL}/analyze", json=analyze_payload, timeout=60)
+                    analyze_result = analyze_response.json() if analyze_response.status_code == 200 else {}
+                    if not analyze_result.get("success"):
+                        st.error(f"Analysis failed: {analyze_result.get('message', 'Unknown error')}")
+                        return
+                    
+                    hype_score = analyze_result.get("hype_score", 0.0)
+                    
+                    # Fetch cultural insights
+                    tags_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
                     insights_response = requests.get(
-                        f"{API_BASE_URL}/insights/{location}/{category}?insight_type={insight_type}",
+                        f"{API_BASE_URL}/insights/{location or 'global'}?tags={','.join(tags_list)}&insight_type={insight_type}",
                         timeout=10
                     )
                     insights = insights_response.json() if insights_response.status_code == 200 else {}
                     
+                    # Prepare product dictionary
                     product = {
-                        "name": ", ".join(keywords) or category,
-                        "category": category,
-                        "description": description or f"{category} product"
+                        "name": product_name,
+                        "tags": tags_list,
+                        "description": description,
+                        "location": location if location else "Global",
+                        "age_range": age_range if age_range else "All",
+                        "gender": gender if gender != "All" else "All"
                     }
                     
-                    if st.checkbox("Mark this product for sentiment tracking", key="mark_product"):
-                        mark_product(user_id, product["name"], category)
-                    
-                    prediction_payload = {"product": product, "insights": insights}
+                    # Generate predictions
+                    prediction_payload = {
+                        "product": product,
+                        "insights": insights,
+                        "hype_score": hype_score
+                    }
                     prediction_response = requests.post(
                         f"{API_BASE_URL}/predict/demand",
                         json=prediction_payload,
@@ -373,19 +354,9 @@ def main():
                     )
                     predictions = prediction_response.json() if prediction_response.status_code == 200 else {}
                     
-                    hype_payload = {"insights": insights, "category": category, "location": location, "threshold": threshold, "product_name": product["name"]}
-                    hype_response = requests.post(
-                        f"{API_BASE_URL}/hype/score",
-                        json=hype_payload,
-                        timeout=10
-                    )
-                    hype_score = hype_response.json()
-                    
-                    insights_df = insight_visualizer(insights, insight_type, location, category)
-                    predictions_df = prediction_dashboard(predictions, hype_score)
-                    
-                    if hype_score.get("hourly_sentiment_change"):
-                        st.metric("Hourly Sentiment Change", f"{hype_score['hourly_sentiment_change']}%")
+                    # Display results
+                    insights_df = insight_visualizer(insights, insight_type, location or "Global", tags)
+                    predictions_df = prediction_dashboard(predictions, {"averageScore": hype_score})
                     
                     data_quality_widget()
                     llm_data_quality_widget()
@@ -399,11 +370,8 @@ def main():
                             mime=mime
                         )
                     
-                    discord_payload = {"prediction": {"product": product, **predictions.get("data", {})}, "hype_data": hype_score}
+                    discord_payload = {"prediction": {"product": product, **predictions.get("data", {})}, "hype_data": {"averageScore": hype_score}}
                     requests.post(f"{API_BASE_URL}/discord/alert", json=discord_payload, timeout=5)
-                    
-                    integrations_payload = {"prediction": {"product": product, **predictions.get("data", {})}, "hype_data": hype_score}
-                    requests.post(f"{API_BASE_URL}/integrations/send", json=integrations_payload, timeout=5)
                     
                 except requests.RequestException as e:
                     logger.error(f"API request failed: {str(e)}")
@@ -415,8 +383,6 @@ def main():
     with tab2:
         st.header("Store Data Management")
         user_provided_store_data()
-        
-        # Show existing store data
         st.subheader("Existing Store Data")
         conn = sqlite3.connect(DB_PATH)
         store_df = pd.read_sql_query("SELECT product, sales, date FROM store_data", conn)
@@ -436,8 +402,6 @@ def main():
     with tab3:
         st.header("Google Trends Integration")
         fetch_and_display_trends()
-        
-        # Show existing trends data
         st.subheader("Existing Trends Data")
         conn = sqlite3.connect(DB_PATH)
         trends_df = pd.read_sql_query(

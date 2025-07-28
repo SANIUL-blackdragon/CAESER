@@ -15,17 +15,11 @@ import random
 from pydantic import BaseModel
 import time, traceback, json
 
-# ➜ 1. Added at top with other imports
-import time, json
-
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
-
-# Global variable for historical forecasts
-historical_forecasts = []
 
 class AnalyzeInput(BaseModel):
     product_name: str
@@ -34,7 +28,7 @@ class AnalyzeInput(BaseModel):
     target_area: Optional[str] = None
     locations: Optional[str] = None
     gender: Optional[str] = None
-    
+
 class FeedbackIn(BaseModel):
     user_id: str
     product_name: str
@@ -52,17 +46,15 @@ async def startup_event():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Create system_events table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS system_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             event_type TEXT,
-            timestamp TEXT,
+           (timestamp TEXT,
             details TEXT
         )
     """)
     
-    # Create predictions and outcomes tables
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS predictions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,26 +74,16 @@ async def startup_event():
         )
     """)
     
-    # Log startup time in UTC
     utc_time = datetime.now(pytz.utc).isoformat()
     cursor.execute("""
         INSERT INTO system_events (event_type, timestamp)
         VALUES (?, ?)
     """, ("startup", utc_time))
     
-    # Load historical forecasts
-    cursor.execute("""
-        SELECT score, timestamp FROM hype_scores 
-        ORDER BY timestamp DESC LIMIT 100
-    """)
-    global historical_forecasts
-    historical_forecasts = cursor.fetchall()
-    
     conn.commit()
     conn.close()
-    logger.info(f"System started at {utc_time}, loaded {len(historical_forecasts)} historical forecasts")
+    logger.info(f"System started at {utc_time}")
 
-# ➜ 2. Wrapped all endpoints with logging
 @app.post("/analyze")
 async def analyze(input: AnalyzeInput):
     start = time.time()
@@ -112,76 +94,68 @@ async def analyze(input: AnalyzeInput):
     conn.commit()
     conn.close()
     try:
-        """Endpoint to trigger analysis pipeline"""
-        try:
-            # Parse inputs
-            keywords = [kw.strip() for kw in input.tags.split(",")]
-            locations = [loc.strip() for loc in input.locations.split(",")] if input.locations else []
-            gender = input.gender
-            
-            # Build command for scraping
-            cmd = [
-                "scrapy", "crawl", "social_media", 
-                "-a", f"keywords={','.join(keywords)}"
-            ]
-            
-            if locations:
-                cmd.extend(["-a", f"locations={','.join(locations)}"])
-            if gender:
-                cmd.extend(["-a", f"gender={gender}"])
-            
-            # Run scraping process
-            logger.info(f"Running scraping command: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            
-            if result.returncode != 0:
-                logger.error(f"Scraping failed: {result.stderr}")
-                return {"success": False, "hype_score": 0.0, "message": f"Scraping failed: {result.stderr}"}
-            
-            logger.info(f"Scraping completed: {result.stdout}")
-            
-            # Simulate data processing and analysis (MVP: mock data)
-            # In a real implementation, this would call the analysis pipeline
-            hype_score = random.uniform(0, 100)  # Mock hype score for MVP
-            
-            return {
-                "success": True, 
-                "hype_score": hype_score, 
-                "message": "Analysis completed successfully"
-            }
-        except Exception as e:
-            logger.error(f"Analysis failed: {str(e)}")
-            return {
-                "success": False, 
-                "hype_score": 0.0, 
-                "message": f"Analysis failed: {str(e)}"
-            }
+        keywords = [kw.strip() for kw in input.tags.split(",")]
+        locations = [loc.strip() for loc in input.locations.split(",")] if input.locations else []
+        gender = input.gender
+        
+        cmd = [
+            "scrapy", "crawl", "social_media", 
+            "-a", f"keywords={','.join(keywords)}"
+        ]
+        
+        if locations:
+            cmd.extend(["-a", f"locations={','.join(locations)}"])
+        if gender:
+            cmd.extend(["-a", f"gender={gender}"])
+        
+        logger.info(f"Running scraping command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            logger.error(f"Scraping failed: {result.stderr}")
+            return {"success": False, "hype_score": 0.0, "message": f"Scraping failed: {result.stderr}"}
+        
+        logger.info(f"Scraping completed: {result.stdout}")
+        hype_score = random.uniform(0, 100)  # Mock hype score; replace with real calculation
+        return {
+            "success": True, 
+            "hype_score": hype_score, 
+            "message": "Analysis completed successfully"
+        }
+    except Exception as e:
+        logger.error(f"Analysis failed: {str(e)}")
+        return {
+            "success": False, 
+            "hype_score": 0.0, 
+            "message": f"Analysis failed: {str(e)}"
+        }
     finally:
         dur = (time.time() - start) * 1000
         sqlite3.connect(DB_PATH).execute(
             "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
             ("/analyze", dur, datetime.now(pytz.utc).isoformat())
-        ).commit()
+        ).connection.commit()
 
-@app.get("/insights/{location}/{category}")
-async def get_insights(location: str, category: str, insight_type: str = "brand"):
+@app.get("/insights/{location}")
+async def get_insights(location: str, tags: str, insight_type: str = "brand"):
     start = time.time()
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
         "INSERT INTO request_state(endpoint, payload, ts) VALUES (?,?,?)",
-        (f"/insights/{location}/{category}", json.dumps({"insight_type": insight_type}), datetime.now(pytz.utc).isoformat())
+        (f"/insights/{location}", json.dumps({"tags": tags, "insight_type": insight_type}), datetime.now(pytz.utc).isoformat())
     )
     conn.commit()
     conn.close()
     try:
-        logger.info(f"Fetching insights for {location}/{category}/{insight_type}")
-        return qloo_service.get_cultural_insights(location, category, insight_type)
+        tags_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
+        logger.info(f"Fetching insights for {location} with tags {tags}")
+        return qloo_service.get_cultural_insights(location, tags_list, insight_type)
     finally:
         dur = (time.time() - start) * 1000
         sqlite3.connect(DB_PATH).execute(
             "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
-            (f"/insights/{location}/{category}", dur, datetime.now(pytz.utc).isoformat())
-        ).commit()
+            (f"/insights/{location}", dur, datetime.now(pytz.utc).isoformat())
+        ).connection.commit()
 
 @app.get("/llm_data_quality")
 async def get_llm_data_quality():
@@ -201,7 +175,7 @@ async def get_llm_data_quality():
         sqlite3.connect(DB_PATH).execute(
             "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
             ("/llm_data_quality", dur, datetime.now(pytz.utc).isoformat())
-        ).commit()
+        ).connection.commit()
 
 @app.get("/data_quality")
 async def get_data_quality():
@@ -221,7 +195,7 @@ async def get_data_quality():
         sqlite3.connect(DB_PATH).execute(
             "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
             ("/data_quality", dur, datetime.now(pytz.utc).isoformat())
-        ).commit()
+        ).connection.commit()
 
 @app.post("/predict/demand")
 async def predict_demand(data: dict):
@@ -236,10 +210,10 @@ async def predict_demand(data: dict):
     try:
         product = data.get("product")
         insights = data.get("insights")
+        hype_score = data.get("hype_score", 0.0)
         logger.info(f"Generating prediction for product: {product.get('name', 'Unknown')}")
-        prediction = llm_service.get_prediction(product, insights)
+        prediction = llm_service.get_prediction(product, insights, hype_score)
         
-        # Save prediction to database
         if prediction and prediction.get("success"):
             prediction_data = prediction["data"]
             predicted_uplift = prediction_data.get("uplift", 0.0)
@@ -251,7 +225,7 @@ async def predict_demand(data: dict):
             cursor.execute("""
                 INSERT INTO predictions (product_name, category, predicted_uplift, confidence, timestamp)
                 VALUES (?, ?, ?, ?, ?)
-            """, (product["name"], product["category"], predicted_uplift, confidence, timestamp))
+            """, (product["name"], ','.join(product["tags"]), predicted_uplift, confidence, timestamp))
             conn.commit()
             conn.close()
             logger.info(f"Saved prediction for {product['name']} to database")
@@ -262,7 +236,7 @@ async def predict_demand(data: dict):
         sqlite3.connect(DB_PATH).execute(
             "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
             ("/predict/demand", dur, datetime.now(pytz.utc).isoformat())
-        ).commit()
+        ).connection.commit()
 
 @app.post("/hype/score")
 async def calculate_hype_score(data: dict):
@@ -276,17 +250,17 @@ async def calculate_hype_score(data: dict):
     conn.close()
     try:
         insights = data.get("insights")
-        category = data.get("category")
+        tags = data.get("category")  # Assuming tags are passed as category for compatibility
         location = data.get("location")
         threshold = data.get("threshold", 20.0)
         logger.info("Calculating hype score")
-        return hype_engine.calculate_hype_score(insights, category, location, threshold)
+        return hype_engine.calculate_hype_score(insights, tags, location, threshold)
     finally:
         dur = (time.time() - start) * 1000
         sqlite3.connect(DB_PATH).execute(
             "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
             ("/hype/score", dur, datetime.now(pytz.utc).isoformat())
-        ).commit()
+        ).connection.commit()
 
 @app.post("/discord/alert")
 async def send_discord_alert(data: dict):
@@ -308,7 +282,7 @@ async def send_discord_alert(data: dict):
         sqlite3.connect(DB_PATH).execute(
             "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
             ("/discord/alert", dur, datetime.now(pytz.utc).isoformat())
-        ).commit()
+        ).connection.commit()
 
 @app.post("/integrations/send")
 async def send_integrations(data: dict):
