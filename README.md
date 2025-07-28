@@ -1,85 +1,91 @@
-# CÆSER - Cultural Affinity Simulation Engine for Retail
+# CAESER Project
 
 ## Overview
-CÆSER is an AI system designed to predict, simulate, and strategize market behavior for e-commerce merchants through cultural intelligence and predictive analytics. The system integrates:
-- Qloo's Taste AI™ API for cultural insights
-- DeepSeek/Kimi models via OpenRouter.ai for predictive analytics
-- Discord webhooks for alerts
-- Streamlit for dashboard visualization
-
-## Project Structure
-```
-.
-├── api/                  # FastAPI backend
-│   ├── main.py           # Main API routes and logic
-│   ├── services/         # Service layer implementations
-│   └── utils/            # Utility functions
-├── frontend/             # Streamlit dashboard
-│   └── src/main.py       # Main dashboard implementation
-├── data/                 # Data storage and processing
-├── docs/                 # Documentation
-├── migrations/           # Database migrations
-├── scrapers/             # Data scraping utilities
-├── tests/                # Test cases
-├── Dockerfile            # Container configuration
-├── docker-compose.yml    # Multi-container setup
-├── package.json          # Frontend dependencies
-└── requirements.txt      # Python dependencies
-```
+CAESER is a full-stack application combining data processing, API services, and frontend visualization. The system includes:
+- Python backend services
+- Web frontend
+- Data scrapers and processors
+- Database integration
 
 ## Setup Instructions
 
 ### Prerequisites
-- Python 3.11+
-- Node.js (for frontend)
+- Python 3.9+
+- Node.js 16+
+- SQLite (included)
 - Docker (optional)
 
 ### Installation
 1. Clone the repository
-2. Install Python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+2. Install backend dependencies:
+```bash
+pip install -r requirements.txt
+```
 3. Install frontend dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+cd frontend
+npm install
+```
 
 ### Configuration
-1. Create a `.env` file with required API keys:
-   ```
-   QLOO_API_KEY=your_qloo_key
-   OPENROUTER_API_KEY=your_openrouter_key
-   DISCORD_WEBHOOK_URL=your_webhook_url
-   ```
+1. Copy `.env.example` to `.env` and configure environment variables
+2. Initialize database:
+```bash
+python data/init_db.py
+```
 
-### Running Locally
-1. Start the backend:
-   ```bash
-   uvicorn api.main:app --reload
-   ```
-2. Start the frontend:
-   ```bash
-   streamlit run frontend/src/main.py
-   ```
+## Project Structure
 
-### Docker Deployment
+```
+├── api/               # Backend services
+├── data/              # Data processing and storage
+├── frontend/          # Frontend application  
+├── migrations/        # Database migrations
+├── notebooks/         # Jupyter notebooks
+├── scrapers/          # Data collection scripts
+├── tests/             # Test cases
+```
+
+## Usage
+
+### Running the Application
+Start backend:
+```bash
+python api/main.py
+```
+
+Start frontend:
+```bash
+cd frontend
+npm run dev
+```
+
+### Docker
 ```bash
 docker-compose up --build
 ```
 
-## API Endpoints
-Key endpoints include:
-- `/analyze` - Trigger analysis pipeline
-- `/insights/{location}/{category}` - Get cultural insights
-- `/predict/demand` - Generate demand predictions
-- `/hype/score` - Calculate hype scores
-- `/discord/alert` - Send Discord alerts
-
 ## Contributing
+
+### Code of Conduct
+- Be respectful and inclusive
+- Keep discussions professional
+- No harassment of any kind
+
+### Contribution Guidelines
 1. Fork the repository
 2. Create a feature branch
-3. Submit a pull request
+3. Submit a pull request with:
+   - Clear description of changes
+   - Relevant tests
+   - Updated documentation
+
+## Troubleshooting
+
+### Common Issues
+- **Database connection errors**: Verify `.env` configuration
+- **Missing dependencies**: Run `pip install -r requirements.txt` and `npm install`
+- **Frontend not loading**: Check console for errors
 
 ## License
-ISC
+This project is licensed under the [MIT License](LICENSE) for personal and non-commercial use only.
