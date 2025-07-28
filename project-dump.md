@@ -1,13 +1,106 @@
 ﻿# Project Dump: D:\LAPTOP\TO_EARN\AI\CAESER
-Generated: 2025-07-28 04:47:47
+Generated: 2025-07-28 22:16:43
 Max File Size: 10MB
 
 ---
 
+# README.md
+
+# CAESER Project
+
+## Overview
+CAESER is a full-stack application combining data processing, API services, and frontend visualization. The system includes:
+- Python backend services
+- Web frontend
+- Data scrapers and processors
+- Database integration
+
+## Setup Instructions
+
+### Prerequisites
+- Python 3.9+
+- Node.js 16+
+- SQLite (included)
+- Docker (optional)
+
+### Installation
+1. Clone the repository
+2. Install backend dependencies:
+```bash
+pip install -r requirements.txt
+```
+3. Install frontend dependencies:
+```bash
+cd frontend
+npm install
+```
+
+### Configuration
+1. Copy `.env.example` to `.env` and configure environment variables
+2. Initialize database:
+```bash
+python data/init_db.py
+```
+
+## Project Structure
+
+```
+├── api/               # Backend services
+├── data/              # Data processing and storage
+├── frontend/          # Frontend application  
+├── migrations/        # Database migrations
+├── notebooks/         # Jupyter notebooks
+├── scrapers/          # Data collection scripts
+├── tests/             # Test cases
+```
+
+## Usage
+
+### Running the Application
+Start backend:
+```bash
+python api/main.py
+```
+
+Start frontend:
+```bash
+cd frontend
+npm run dev
+```
+
+### Docker
+```bash
+docker-compose up --build
+```
+
+## Contributing
+
+### Code of Conduct
+- Be respectful and inclusive
+- Keep discussions professional
+- No harassment of any kind
+
+### Contribution Guidelines
+1. Fork the repository
+2. Create a feature branch
+3. Submit a pull request with:
+   - Clear description of changes
+   - Relevant tests
+   - Updated documentation
+
+## Troubleshooting
+
+### Common Issues
+- **Database connection errors**: Verify `.env` configuration
+- **Missing dependencies**: Run `pip install -r requirements.txt` and `npm install`
+- **Frontend not loading**: Check console for errors
+
+## License
+This project is licensed under the [MIT License](LICENSE) for personal and non-commercial use only.
 
 ## File: .env
 
-```$language
+``$language
 
 # API Keys
 QLOO_API_KEY=Ed8qH8iz9GVhxRR2JVkVjVpwcxx1vy_at3TQPxIekkY
@@ -16,7 +109,7 @@ OPENROUTER_API_KEY=sk-or-v1-867307d348dba9d6cc010ec2696fcc1d1200e41a60e2de9e1f0c
 DB_PATH=./data/caeser.db
 
 # API Base URL for deployment
-API_BASE_URL=http://your-deployment-url.com
+API_BASE_URL=http://localhost:8000
 
 # Email Configuration
 EMAIL_HOST=smtp.gmail.com
@@ -43,12 +136,12 @@ TWITTER_API_SECRET=your_twitter_api_secret
 TWITTER_ACCESS_TOKEN=your_twitter_access_token
 TWITTER_ACCESS_TOKEN_SECRET=your_twitter_access_token_secret
 PROXY_LIST=proxy1,proxy2,proxy3
-```
+`
 
 
 ## File: alembic.ini
 
-```$language
+``$language
 
 # A generic, single database configuration.
 
@@ -197,12 +290,12 @@ formatter = generic
 format = %(levelname)-5.5s [%(name)s] %(message)s
 datefmt = %H:%M:%S
 
-```
+`
 
 
 ## File: caeser_visuals.html
 
-```$language
+``$language
 
 <!DOCTYPE html>
 <html lang="en">
@@ -720,12 +813,87 @@ datefmt = %H:%M:%S
     </script>
 </body>
 </html>
-```
+`
+
+
+
+## File: docker-compose.yml
+
+``$language
+
+version: "1.00.0"
+services:
+  caeser-api:
+    build: .
+    ports: ["8000:8000"]
+    env_file: .env
+    volumes: ["./data:/app/data"]
+    restart: unless-stopped
+
+  caeser-frontend:
+    image: python:3.11-slim
+    working_dir: /app
+    command: >
+      sh -c "
+        pip install streamlit requests python-dotenv plotly openpyxl reportlab &&
+        streamlit run frontend/src/main.py --server.port=8501 --server.address=0.0.0.0
+      "
+    ports: ["8501:8501"]
+    env_file: .env
+    volumes: [".:/app"]
+    depends_on: [caeser-api]
+    restart: unless-stopped
+`
+
+
+## File: Dockerfile
+
+``$language
+
+FROM python:3.11-slim as builder
+WORKDIR /app
+RUN apt-get update && apt-get install -y gcc g++ git curl && rm -rf /var/lib/apt/lists/*
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+FROM python:3.11-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y sqlite3 && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /usr/local /usr/local
+COPY . .
+RUN mkdir -p data && python data/init_db.py
+EXPOSE 8000
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+`
+
+
+## File: LICENSE
+
+``$language
+
+MIT License
+
+Copyright (c) 2025 SANIUL-blackdragon (mdalifsaniul@gmail.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software for personal and non-commercial purposes only. Commercial use 
+and monetization are expressly prohibited without explicit written permission 
+from the author.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+`
 
 
 ## File: tree.ps1
 
-```$language
+``$language
 
 function Show-Tree {
     param (
@@ -752,7 +920,8 @@ function Show-Tree {
 
 # Run the function
 Show-Tree
-```
+`
+
 ## TREE
 
 +-- api/
@@ -781,7 +950,6 @@ Show-Tree
 |   +-- raw/
 |   +-- schemas/
 |   +-- temp/
-|   |-- caeser.db
 |   |-- init_db.py
 +-- docs/
 |   +-- img/
@@ -796,6 +964,7 @@ Show-Tree
 |   |   |-- CAESER_MVP_Day5_Day5_0_Plan.markdown
 |   |   |-- CAESER_MVP_Development_Plan.markdown
 |   |   |-- Discord_Webhook_Integration.md
+|   |   |-- mvp-future-upgrades.md
 |   |   |-- naming-conventions.md
 |   |   |-- OPENROUTER_LLM_INTEGRATION.md
 |   |   |-- Qloo-Insights-API-Guide.markdown
@@ -804,9 +973,7 @@ Show-Tree
 |   |   |-- draft.txt
 |   |   |-- feature_draft.txt
 |   |   |-- future-upgrades.md
-|   |   |-- mvp-future-upgrades.md
 |   |   |-- qloo-draft.txt
-|   |   |-- summary-of-alpha_comp.md
 +-- frontend/
 |   +-- components/
 |   +-- public/
@@ -814,6 +981,12 @@ Show-Tree
 |   |   |-- main.py
 |   |   |-- outcome_form.py
 |   +-- styles/
++-- migrations/
+|   +-- versions/
+|   |   |-- 4c0ff554c6e2_initial_migration.py
+|   |-- env.py
+|   |-- README
+|   |-- script.py.mako
 +-- notebooks/
 +-- scrapers/
 |   |-- affiliate_purchases.py
@@ -824,20 +997,27 @@ Show-Tree
 +-- tests/
 |-- .env
 |-- .gitignore
+|-- alembic.ini
 |-- caeser_visuals.html
+|-- deploy_monitors.py
+|-- docker-compose.yml
+|-- Dockerfile
 |-- eslint.config.mjs
+|-- LICENSE
 |-- package-lock.json
 |-- package.json
 |-- project-dump.md
 |-- ProjectDumper - Copy.ps1
 |-- ProjectDumper.ps1
+|-- README.md
 |-- requirements.txt
 |-- tree.ps1
 
 
+
 ## File: api\cron.py
 
-```$language
+``$language
 
 import asyncio, requests, sqlite3
 from datetime import datetime, timedelta
@@ -901,12 +1081,12 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nHealth monitoring stopped")
         sys.exit(0)
-```
+`
 
 
 ## File: api\main.py
 
-```$language
+``$language
 
 from api.utils.logging import setup_logging
 logger = setup_logging()
@@ -1518,12 +1698,11 @@ async def competitors():
     return {"nike": {"hype": 78}, "adidas": {"hype": 65}} ##This is example, use the dynamic data that has been used till now
 
 logger.info('API initialized successfully')
-```
-
+`
 
 ## File: api\services\data_quality_service.py
 
-```$language
+``$language
 
 import sqlite3
 import os
@@ -1577,12 +1756,12 @@ def check_data_quality():
         "data": metrics,
         "message": "Data quality metrics retrieved"
     }
-```
+`
 
 
 ## File: api\services\discord_service.py
 
-```$language
+``$language
 
 import os
 import requests
@@ -1735,12 +1914,12 @@ def send_alert(prediction, hype_data):
     successes = [r["success"] for r in results]
     messages = [r["message"] for r in results]
     return {"success": any(successes), "message": "; ".join(messages)}
-```
+`
 
 
 ## File: api\services\hype_engine.py
 
-```$language
+``$language
 
 import random
 from typing import Dict
@@ -1941,12 +2120,12 @@ def get_historical_noise(category: str, location: str, product_name: str = None)
     # Placeholder implementation
     # In a real scenario, this function would fetch historical data and compute the noise
     return 0.0  # Replace with actual historical noise calculation
-```
+`
 
 
 ## File: api\services\integrations_service.py
 
-```$language
+``$language
 
 import os
 import requests
@@ -2081,12 +2260,12 @@ def send_integrations(prediction, hype_data):
     successes = [r["success"] for r in results]
     messages = [r["message"] for r in results]
     return {"success": any(successes), "message": "; ".join(messages)}
-```
+`
 
 
 ## File: api\services\llm_service.py
 
-```$language
+``$language
 
 import os
 import sqlite3
@@ -2198,12 +2377,12 @@ def get_llm_data_quality():
         "data": metrics,
         "message": "LLM data quality metrics retrieved"
     }
-```
+`
 
 
 ## File: api\services\qloo_service.py
 
-```$language
+``$language
 
 import os
 import requests
@@ -2309,12 +2488,16 @@ def get_cultural_insights(location: str, category: str, insight_type: str = "bra
     except requests.RequestException as e:
         logger.error(f"Qloo API request failed: {str(e)}")
         return {"success": False, "data": None, "message": f"Qloo API request failed: {str(e)}"}
-```
+`
+
+
+## File: api\utils\.usage_monitor.py
+
 
 
 ## File: api\utils\logging.py
 
-```$language
+``$language
 
 import logging
 from logging.handlers import RotatingFileHandler
@@ -2347,11 +2530,24 @@ def setup_logging(name: str = __name__, level: int = logging.INFO, log_file: str
         logger.addHandler(file_handler)
     
     return logger
-```
+`
+
+
+## File: bin\.usage_monitor.py
+
+
+
+## File: bin\sqlite\.usage_monitor.py
+
+
+
+## File: data\.usage_monitor.py
+
+
 
 ## File: data\init_db.py
 
-```$language
+``$language
 
 from alembic import config
 
@@ -2361,12 +2557,44 @@ def init_db():
 
 if __name__ == "__main__":
     init_db()
-```
+`
+
+
+## File: data\processed\.usage_monitor.py
+
+
+
+## File: data\raw\.usage_monitor.py
+
+
+
+## File: data\schemas\.usage_monitor.py
+
+
+
+## File: docs\.usage_monitor.py
+
+
+
+## File: frontend\.usage_monitor.py
+
+
+
+## File: frontend\components\.usage_monitor.py
+
+
+
+## File: frontend\public\.usage_monitor.py
+
+
+
+## File: frontend\src\.usage_monitor.py
+
 
 
 ## File: frontend\src\main.py
 
-```$language
+``$language
 
 import streamlit as st
 import requests
@@ -2830,12 +3058,12 @@ def main():
 if __name__ == "__main__":
     main()
 logger.info('Streamlit app initialized successfully')
-```
+`
 
 
 ## File: frontend\src\outcome_form.py
 
-```$language
+``$language
 
 import streamlit as st
 import requests
@@ -2864,12 +3092,20 @@ if st.button("Submit"):
             st.json(r.json())
         except requests.RequestException as e:
             st.error(f"Failed to submit outcome: {str(e)}")
-```
+`
+
+
+## File: frontend\styles\.usage_monitor.py
+
+
+
+## File: migrations\.usage_monitor.py
+
 
 
 ## File: migrations\env.py
 
-```$language
+``$language
 
 from logging.config import fileConfig
 
@@ -2950,20 +3186,20 @@ if context.is_offline_mode():
 else:
     run_migrations_online()
 
-```
+`
 
 
 ## File: migrations\README
 
-```$language
+``$language
 
 Generic single-database configuration.
-```
+`
 
 
 ## File: migrations\script.py.mako
 
-```$language
+``$language
 
 """${message}
 
@@ -2994,12 +3230,16 @@ def downgrade() -> None:
     """Downgrade schema."""
     ${downgrades if downgrades else "pass"}
 
-```
+`
+
+
+## File: migrations\versions\.usage_monitor.py
+
 
 
 ## File: migrations\versions\4c0ff554c6e2_initial_migration.py
 
-```$language
+``$language
 
 from alembic import op
 import sqlalchemy as sa
@@ -3034,12 +3274,16 @@ def downgrade():
     op.drop_index('idx_insights', table_name='cultural_insights')
     op.drop_table('cultural_insights')
     # ### end Alembic commands ###
-```
+`
+
+
+## File: notebooks\.usage_monitor.py
+
 
 
 ## File: scrapers\affiliate_purchases.py
 
-```$language
+``$language
 
 # In scrapers/affiliate_purchases.py
 import json
@@ -3095,12 +3339,12 @@ def store_affiliate_data():
 if __name__ == "__main__":
     init_affiliate_table()
     store_affiliate_data()
-```
+`
 
 
 ## File: scrapers\credit_card_spending.py
 
-```$language
+``$language
 
 # In scrapers/credit_card_spending.py
 import pandas as pd
@@ -3155,12 +3399,12 @@ def store_spending_data():
 if __name__ == "__main__":
     init_spending_table()
     store_spending_data()
-```
+`
 
 
 ## File: scrapers\dark_web.py
 
-```$language
+``$language
 
 # In scrapers/dark_web.py
 import json
@@ -3215,12 +3459,12 @@ def store_dark_web_data():
 if __name__ == "__main__":
     init_dark_web_table()
     store_dark_web_data()
-```
+`
 
 
 ## File: scrapers\google_trends.py
 
-```$language
+``$language
 
 # In scrapers/google_trends.py
 import requests
@@ -3271,12 +3515,12 @@ if __name__ == "__main__":
     trends = get_google_trends(keywords)
     for keyword, interest in trends:
         store_trend(keyword, interest)
-```
+`
 
 
 ## File: scrapers\social_media_spider.py
 
-```$language
+``$language
 
 # In scrapers/social_media_spider.py
 import scrapy
@@ -3482,5 +3726,5 @@ if __name__ == "__main__":
 
 ---
 ## Summary
-Total files processed: 26
-Completed: 2025-07-28 04:48:01
+Total files processed: 51
+Completed: 2025-07-28 22:17:02
