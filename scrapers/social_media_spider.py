@@ -10,6 +10,8 @@ import os
 import random
 from fake_useragent import UserAgent
 import time
+import json, os, pathlib
+import logging
 
 DB_PATH = os.getenv("DB_PATH", "../data/caeser.db")
 TWITTER_API_KEY = os.getenv("TWITTER_API_KEY")
@@ -48,37 +50,28 @@ class SocialMediaSpider(scrapy.Spider):
     ua = UserAgent()
     MAX_POSTS = 1000000  # Target ~1 GB of data (assuming 1 KB per post)
 
-    def __init__(self, sources='reddit,twitter,tiktok,instagram,imdb,ebay', target='', keywords='', locations='', gender='', *args, **kwargs):
-        super(SocialMediaSpider, self).__init__(*args, **kwargs)
-        self.sources = [s.strip().lower() for s in sources.split(',')]
-        self.target = target  # No default value, required from frontend
+    def __init__(self, sources='', target='', keywords='', locations='', gender='', *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sources = [s.strip().lower() for s in sources.split(',')] if sources else []
+        self.target = target
         self.keywords = [kw.strip().lower() for kw in keywords.split(',')] if keywords else []
         self.locations = [loc.strip().lower() for loc in locations.split(',')] if locations else []
         self.gender = gender.lower() if gender else ''
+
+        # load dynamic config
+        cfg_path = pathlib.Path(__file__).with_name("scraper_config.json")
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            self.cfg = json.load(f)
+
         self.start_urls = []
-        self.post_count = 0
-        
-        if 'reddit' in self.sources:
-            self.start_urls.append(f"https://www.reddit.com/search/?q={self.target}")
-        if 'tiktok' in self.sources:
-            self.start_urls.append(f"https://www.tiktok.com/search?q={self.target}")
-        if 'instagram' in self.sources:
-            self.start_urls.append(f"https://www.instagram.com/explore/tags/{self.target}/")
-        if 'imdb' in self.sources:
-            self.start_urls.append(f"https://www.imdb.com/search/title/?title={self.target}")
-        if 'ebay' in self.sources:
-            self.start_urls.append(f"https://www.ebay.com/sch/i.html?_nkw={self.target}&_sacat=0")
-        if 'twitter' not in self.sources:
-            return
-        
-        self.twitter_headers = {
-            'Authorization': f'Bearer {TWITTER_API_KEY}',
-            'Content-Type': 'application/json'
-        }
+        for src in self.sources:
+            if src in self.cfg:
+                self.start_urls.append(self.cfg[src]["url"].format(target=self.target))
 
     def start_requests(self):
         for url in self.start_urls:
             yield Request(url, headers={'User-Agent': self.ua.random}, callback=self.parse, dont_filter=True)
+        # Twitter stays separate
         if 'twitter' in self.sources:
             query = f"{self.target} {' '.join(self.keywords)} {' '.join(self.locations)}"
             twitter_url = f"https://api.twitter.com/2/tweets/search/recent?query={query}&max_results=100"

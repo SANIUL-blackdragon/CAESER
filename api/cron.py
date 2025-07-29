@@ -2,6 +2,7 @@ import asyncio, requests, sqlite3
 from datetime import datetime, timedelta
 import sys
 import logging
+import os
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -50,6 +51,15 @@ async def health_check_loop():
 
         # Sleep for 5 minutes before the next health check
         await asyncio.sleep(300)
+        
+webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
+if webhook_url:
+    try:
+        requests.post(webhook_url, json={
+            "content": "🤖 Consider adding Google Trends to reduce high-score drift."
+        }, timeout=5)
+    except requests.RequestException as e:
+        logger.error(f"Failed to send Discord alert: {str(e)}")
 
 # Add this to run the health check loop when executed as a module
 if __name__ == "__main__":

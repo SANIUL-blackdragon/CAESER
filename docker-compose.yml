@@ -1,4 +1,3 @@
-version: "1.00.0"
 services:
   caeser-api:
     build: .

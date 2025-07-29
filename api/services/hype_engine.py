@@ -19,11 +19,22 @@ logger = logging.getLogger(__name__)
 
 DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
 
-category_keywords = {
-    "sneakers": ["sneakers", "shoes", "footwear", "kicks"],
-    "electronics": ["electronics", "gadgets", "tech", "devices"],
-    "fashion": ["fashion", "clothing", "apparel", "style"]
-}
+# Load category keywords from database or fallback to hard-coded map
+category_keywords = get_categories()
+ 
+def get_categories() -> dict:
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.execute("SELECT category_name, keywords FROM categories")
+    rows = cur.fetchall()
+    conn.close()
+    # Fallback to hard-coded map if table empty
+    if not rows:
+        return {
+            "sneakers": ["sneakers", "shoes", "footwear", "kicks"],
+            "electronics": ["electronics", "gadgets", "tech", "devices"],
+            "fashion": ["fashion", "clothing", "apparel", "style"]
+        }
+    return {row[0]: [kw.strip() for kw in row[1].split(",")] for row in rows}
 
 # Cultural keywords for bonus scoring
 CULTURAL_KEYWORDS = ["hype", "trend", "viral", "drop", "exclusive", "limited", "collab"]

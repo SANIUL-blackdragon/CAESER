@@ -11,15 +11,25 @@ import random
 import time
 from pydantic import BaseModel
 from typing import Optional
+import math
+import json
+import pandas as pd
+from datetime import timedelta
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
+DB_PATH = os.getenv("DB_PATH", "./data/caeser.db").strip('\'"')
 if not isinstance(DB_PATH, str):
     raise ValueError("DB_PATH must be a string")
 
+class LogMessageIn(BaseModel):
+    new_message: str
+
+class CompetitorIn(BaseModel):
+    name: str
+    hype_score: float
 class FeedbackIn(BaseModel):
     user_id: str
     product_name: str
@@ -44,6 +54,10 @@ class AnalyzeInput(BaseModel):
     target_area: Optional[str] = None
     locations: Optional[str] = None
     gender: Optional[str] = None
+
+class CategoryIn(BaseModel):
+    category_name: str
+    keywords: str   # comma-separated
 
 @app.on_event("startup")
 async def startup_event():
@@ -91,6 +105,67 @@ async def startup_event():
     conn.close()
     logger.info(f"System started at {utc_time}")
 
+@app.post("/admin/log_message")
+def set_log_message(body: LogMessageIn):
+    os.environ["STARTUP_MESSAGE"] = body.new_message
+    return {"success": True, "message": "Next restart will use the new message"}
+
+@app.get("/competitors")
+async def competitors():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.execute("SELECT name, hype_score FROM competitors")
+    rows = cursor.fetchall()
+    conn.close()
+    return {row[0]: {"hype": row[1]} for row in rows}
+
+@app.post("/competitors/add")
+async def add_competitor(body: CompetitorIn):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR IGNORE INTO competitors (name, hype_score) VALUES (?, ?)",
+        (body.name, body.hype_score)
+    )
+    cursor.execute(
+        "UPDATE competitors SET hype_score = ? WHERE name = ?",
+        (body.hype_score, body.name)
+    )
+    conn.commit()
+    conn.close()
+    return {"success": True, "message": f"Competitor {body.name} saved/updated"}
+
+@app.post("/categories")
+def add_or_update_category(body: CategoryIn):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO categories (category_name, keywords)
+        VALUES (?, ?)
+        ON CONFLICT(category_name) DO UPDATE SET keywords=excluded.keywords
+    """, (body.category_name, body.keywords))
+    conn.commit()
+    conn.close()
+    return {"success": True, "message": f"Category '{body.category_name}' saved"}
+
+@app.get("/categories")
+def list_categories():
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.execute("SELECT category_name, keywords FROM categories")
+    rows = cur.fetchall()
+    conn.close()
+    return {"success": True, "data": {r[0]: r[1].split(",") for r in rows}}
+
+# ---------- dynamic insight types ----------
+@app.get("/insight_types")
+async def get_insight_types():
+    """Return available insight types from insight_types table."""
+    import sqlite3
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.execute("SELECT type_name FROM insight_types ORDER BY type_name")
+    types = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return types
+
 @app.post("/analyze")
 async def analyze(input: AnalyzeInput):
     start = time.time()
@@ -107,9 +182,11 @@ async def analyze(input: AnalyzeInput):
         gender = input.gender
         
         # Trigger data collection with target set to product_name
+        sources = "reddit,tiktok,instagram,imdb,ebay"  # default; could come from request body
         cmd = [
             "scrapy", "crawl", "social_media",
             "-a", f"target={input.product_name}",
+            "-a", f"sources={sources}",      # ⬅️ NEW
             "-a", f"keywords={','.join(keywords)}"
         ]
         if locations:
@@ -128,7 +205,15 @@ async def analyze(input: AnalyzeInput):
         # Use configured mock score range or real calculation if available
         min_score = float(os.getenv("MOCK_HYPE_MIN", "0"))
         max_score = float(os.getenv("MOCK_HYPE_MAX", "100"))
-        hype_score = random.uniform(min_score, max_score)
+        # Real hype score calculated from scraped data / insights
+        hype_score = hype_engine.calculate_hype_score(
+            insights if insights else {},
+            ','.join(keywords),
+            location or 'global',
+            20.0
+        ).get("averageScore", 0.0)
+        logger.info(f"Calculated hype score: {hype_score}")
+        # Log the hype score
         
         # Generate trend prediction
         trend_result = predict_trend(input.product_name, input.tags)
@@ -721,4 +806,4 @@ async def predict_trend_duration(input: TrendPredictionInput):
 async def competitors():
     return {"nike": {"hype": 78}, "adidas": {"hype": 65}}
 
-logger.info('API initialized successfully')
+logger.info(os.getenv("STARTUP_MESSAGE", "API initialized successfully"))

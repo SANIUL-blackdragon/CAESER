@@ -1,0 +1,32 @@
+{
+  "reddit": {
+    "url": "https://www.reddit.com/search/?q={target}",
+    "post_selector": "div.Post",
+    "text_selector": "h3::text",
+    "likes_selector": "div._1rZYMD_4xY3gRcSS3p8ODO::text"
+  },
+  "tiktok": {
+    "url": "https://www.tiktok.com/search?q={target}",
+    "post_selector": "div.tiktok-x6y88p-DivItemContainerV2",
+    "text_selector": "div.tiktok-1qb12g8-DivThreeColumnContainer p::text",
+    "likes_selector": "strong.tiktok-1p7xrbz-StrongText::text"
+  },
+  "instagram": {
+    "url": "https://www.instagram.com/explore/tags/{target}/",
+    "post_selector": "article",
+    "text_selector": "div._a9zs span::text",
+    "likes_selector": "div.Nm9FK span::text"
+  },
+  "imdb": {
+    "url": "https://www.imdb.com/search/title/?title={target}",
+    "post_selector": "div.lister-item",
+    "text_selector": "h3 a::text",
+    "likes_selector": "div.ratings-bar strong::text"
+  },
+  "ebay": {
+    "url": "https://www.ebay.com/sch/i.html?_nkw={target}&_sacat=0",
+    "post_selector": "li.s-item",
+    "text_selector": "h3.s-item__title::text",
+    "likes_selector": "span.s-item__price::text"
+  }
+}

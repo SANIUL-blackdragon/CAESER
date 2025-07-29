@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
-DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
+DB_PATH = os.getenv("DB_PATH", "./data/caeser.db").strip('\'"')
 if not isinstance(DB_PATH, str):
     st.error("Invalid DB_PATH configuration")
     st.stop()
@@ -65,6 +65,53 @@ st.markdown(f"""
         .stButton>button {{ background-color: var(--primary-color); color: white; }}
     </style>
 """, unsafe_allow_html=True)
+
+with st.sidebar.expander("🛠  Manage Categories"):
+    st.subheader("Add / Edit Category")
+    cat_name = st.text_input("Category Name", key="cat_name")
+    cat_kws = st.text_area("Keywords (comma-separated)", key="cat_kws")
+    if st.button("Save", key="save_cat"):
+        if cat_name and cat_kws:
+            r = requests.post(
+                f"{API_BASE_URL}/categories",
+                json={"category_name": cat_name, "keywords": cat_kws},
+                timeout=5
+            )
+            st.success(r.json().get("message", "Saved"))
+        else:
+            st.error("Both fields required")
+
+    st.subheader("Current Categories")
+    try:
+        cats = requests.get(f"{API_BASE_URL}/categories", timeout=5).json().get("data", {})
+        for k, v in cats.items():
+            st.write(f"**{k}**: {', '.join(v)}")
+    except Exception as e:
+        st.error("Could not load categories")
+
+with st.sidebar.expander("🏆 Manage Competitors"):
+    st.subheader("Add / Update")
+    comp_name = st.text_input("Competitor Name", key="comp_name")
+    comp_score = st.number_input("Hype Score", 0.0, 100.0, 50.0, key="comp_score")
+    if st.button("Save Competitor", key="save_comp"):
+        if comp_name:
+            r = requests.post(
+                f"{API_BASE_URL}/competitors/add",
+                json={"name": comp_name, "hype_score": comp_score},
+                timeout=5
+            )
+            st.success(r.json().get("message", "Saved"))
+        else:
+            st.error("Name required")
+
+    st.subheader("Current Rankings")
+    try:
+        comps = requests.get(f"{API_BASE_URL}/competitors", timeout=5).json()
+        sorted_comps = sorted(comps.items(), key=lambda x: x[1]["hype"], reverse=True)
+        for idx, (name, data) in enumerate(sorted_comps, 1):
+            st.write(f"{idx}. **{name}** – {data['hype']}")
+    except Exception as e:
+        st.error("Could not load competitors")
 
 def init_store_table():
     conn = sqlite3.connect(DB_PATH)
@@ -145,6 +192,10 @@ def fetch_and_display_trends():
                 st.error(f"Error fetching trends: {str(e)}")
 
 def product_input_form():
+    default_sources = ["reddit", "tiktok", "instagram", "imdb", "ebay"]
+    selected_sources = st.multiselect("Scraping Sources", default_sources, default_sources)
+    sources_str = ",".join(selected_sources)
+    
     st.subheader("Product Details")
     product_name = st.text_input("Product Name", help="e.g., Wireless Headphones")
     description = st.text_area("Product Description", help="Describe the product")
@@ -154,7 +205,10 @@ def product_input_form():
     location = st.text_input("Location", help="e.g., San Francisco, CA or blank for global")
     age_range = st.text_input("Age Range", help="e.g., 25-35 or blank")
     gender_options = os.getenv("GENDER_OPTIONS", "All,Male,Female").split(",")
-    insight_types = os.getenv("INSIGHT_TYPES", "brand,demographics,heatmap").split(",")
+    try:
+        insight_types = requests.get(f"{API_BASE_URL}/insight_types", timeout=5).json()
+    except Exception:
+        insight_types = ["brand", "demographics", "heatmap"]  # fallback
     
     gender = st.selectbox("Gender", gender_options, index=0)
     insight_type = st.selectbox("Insight Type", insight_types)
@@ -333,9 +387,10 @@ def main():
                         "product_name": product_name,
                         "description": description,
                         "tags": tags,
-                        "target_area": location if location else None,
-                        "locations": location if location else None,
-                        "gender": gender if gender != "All" else None
+                        "target_area": location,
+                        "locations": location,
+                        "gender": gender,
+                        "sources": sources_str   # ⬅️ NEW
                     }
                     analyze_response = requests.post(f"{API_BASE_URL}/analyze", json=analyze_payload, timeout=60)
                     analyze_result = analyze_response.json() if analyze_response.status_code == 200 else {}
@@ -432,4 +487,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-logger.info('Streamlit app initialized successfully')
+logger.info(os.getenv("STARTUP_MESSAGE", "API initialized successfully"))
