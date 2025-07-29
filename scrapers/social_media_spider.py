@@ -48,10 +48,10 @@ class SocialMediaSpider(scrapy.Spider):
     ua = UserAgent()
     MAX_POSTS = 1000000  # Target ~1 GB of data (assuming 1 KB per post)
 
-    def __init__(self, sources='reddit,twitter,tiktok,instagram,imdb,ebay', target='sneakers', keywords='', locations='', gender='', *args, **kwargs):
+    def __init__(self, sources='reddit,twitter,tiktok,instagram,imdb,ebay', target='', keywords='', locations='', gender='', *args, **kwargs):
         super(SocialMediaSpider, self).__init__(*args, **kwargs)
         self.sources = [s.strip().lower() for s in sources.split(',')]
-        self.target = target
+        self.target = target  # No default value, required from frontend
         self.keywords = [kw.strip().lower() for kw in keywords.split(',')] if keywords else []
         self.locations = [loc.strip().lower() for loc in locations.split(',')] if locations else []
         self.gender = gender.lower() if gender else ''
@@ -59,13 +59,13 @@ class SocialMediaSpider(scrapy.Spider):
         self.post_count = 0
         
         if 'reddit' in self.sources:
-            self.start_urls.append(f"https://reddit.com/r/{self.target}")
+            self.start_urls.append(f"https://www.reddit.com/search/?q={self.target}")
         if 'tiktok' in self.sources:
             self.start_urls.append(f"https://www.tiktok.com/search?q={self.target}")
         if 'instagram' in self.sources:
             self.start_urls.append(f"https://www.instagram.com/explore/tags/{self.target}/")
         if 'imdb' in self.sources:
-            self.start_urls.append(f"https://www.imdb.com/search/title/?title_type=feature&genres={self.target}&sort=user_rating,desc")
+            self.start_urls.append(f"https://www.imdb.com/search/title/?title={self.target}")
         if 'ebay' in self.sources:
             self.start_urls.append(f"https://www.ebay.com/sch/i.html?_nkw={self.target}&_sacat=0")
         if 'twitter' not in self.sources:
@@ -78,13 +78,12 @@ class SocialMediaSpider(scrapy.Spider):
 
     def start_requests(self):
         for url in self.start_urls:
-            yield Request(url, headers={'User-Agent': self.ua.random}, callback=self.parse)
-        
+            yield Request(url, headers={'User-Agent': self.ua.random}, callback=self.parse, dont_filter=True)
         if 'twitter' in self.sources:
-            query = f"{self.target} {' '.join(self.keywords)} {' '.join(self.locations)}" if self.keywords or self.locations else self.target
+            query = f"{self.target} {' '.join(self.keywords)} {' '.join(self.locations)}"
             twitter_url = f"https://api.twitter.com/2/tweets/search/recent?query={query}&max_results=100"
-            yield Request(twitter_url, headers=self.twitter_headers, callback=self.parse_twitter, method='GET')
-
+            yield Request(twitter_url, headers=self.twitter_headers, callback=self.parse_twitter, method='GET', dont_filter=True)
+    
     def parse(self, response):
         if self.post_count >= self.MAX_POSTS:
             return
@@ -201,7 +200,7 @@ class SocialMediaSpider(scrapy.Spider):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Social Media Spider")
     parser.add_argument("--sources", default="reddit,twitter,tiktok,instagram,imdb,ebay", help="Comma-separated sources")
-    parser.add_argument("--target", default="sneakers", help="Target query")
+    parser.add_argument("--target", required=True, help="Target query (product name)")
     parser.add_argument("--keywords", default="", help="Comma-separated keywords")
     parser.add_argument("--locations", default="", help="Comma-separated locations")
     parser.add_argument("--gender", default="", help="Gender filter")

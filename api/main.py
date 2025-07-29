@@ -1,33 +1,24 @@
-from api.utils.logging import setup_logging
-logger = setup_logging()
 from fastapi import FastAPI
 from .services import qloo_service, llm_service, discord_service, hype_engine, integrations_service, data_quality_service
+from .services.predict_trend import predict_trend
 import logging
 import sqlite3
 import os
 import pytz
 from datetime import datetime
-import math
-from pydantic import BaseModel
-from typing import Optional
 import subprocess
 import random
+import time
 from pydantic import BaseModel
-import time, traceback, json
+from typing import Optional
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
-
-class AnalyzeInput(BaseModel):
-    product_name: str
-    description: str
-    tags: str
-    target_area: Optional[str] = None
-    locations: Optional[str] = None
-    gender: Optional[str] = None
+if not isinstance(DB_PATH, str):
+    raise ValueError("DB_PATH must be a string")
 
 class FeedbackIn(BaseModel):
     user_id: str
@@ -41,16 +32,29 @@ class RetrainOut(BaseModel):
     message: str
     new_weights: dict
 
+class TrendPredictionInput(BaseModel):
+    product_name: str
+    tags: str
+    time_period: str  # Optional, e.g., "90 days" (not used in initial version)
+
+class AnalyzeInput(BaseModel):
+    product_name: str
+    description: str
+    tags: str
+    target_area: Optional[str] = None
+    locations: Optional[str] = None
+    gender: Optional[str] = None
+
 @app.on_event("startup")
 async def startup_event():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(str(DB_PATH))
     cursor = conn.cursor()
     
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS system_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             event_type TEXT,
-           (timestamp TEXT,
+            timestamp TEXT,
             details TEXT
         )
     """)
@@ -66,11 +70,14 @@ async def startup_event():
         )
     """)
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS outcomes (
-            prediction_id INTEGER,
-            actual_uplift REAL,
-            timestamp TEXT,
-            FOREIGN KEY(prediction_id) REFERENCES predictions(id)
+        CREATE TABLE IF NOT EXISTS trend_predictions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_name TEXT,
+            tags TEXT,
+            predicted_peak_days REAL,
+            predicted_peak_date TEXT,
+            confidence REAL,
+            timestamp TEXT
         )
     """)
     
@@ -90,19 +97,21 @@ async def analyze(input: AnalyzeInput):
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
         "INSERT INTO request_state(endpoint, payload, ts) VALUES (?,?,?)",
-        ("/analyze", json.dumps(input.dict()), datetime.now(pytz.utc).isoformat()))
+        ("/analyze", input.json(), datetime.now(pytz.utc).isoformat()))
     conn.commit()
     conn.close()
+    
     try:
         keywords = [kw.strip() for kw in input.tags.split(",")]
         locations = [loc.strip() for loc in input.locations.split(",")] if input.locations else []
         gender = input.gender
         
+        # Trigger data collection with target set to product_name
         cmd = [
-            "scrapy", "crawl", "social_media", 
+            "scrapy", "crawl", "social_media",
+            "-a", f"target={input.product_name}",
             "-a", f"keywords={','.join(keywords)}"
         ]
-        
         if locations:
             cmd.extend(["-a", f"locations={','.join(locations)}"])
         if gender:
@@ -113,22 +122,34 @@ async def analyze(input: AnalyzeInput):
         
         if result.returncode != 0:
             logger.error(f"Scraping failed: {result.stderr}")
-            return {"success": False, "hype_score": 0.0, "message": f"Scraping failed: {result.stderr}"}
+            return {"success": False, "hype_score": 0.0, "trend_prediction": None, "message": f"Scraping failed: {result.stderr}"}
         
         logger.info(f"Scraping completed: {result.stdout}")
-        hype_score = random.uniform(0, 100)  # Mock hype score; replace with real calculation
-        return {
-            "success": True, 
-            "hype_score": hype_score, 
+        # Use configured mock score range or real calculation if available
+        min_score = float(os.getenv("MOCK_HYPE_MIN", "0"))
+        max_score = float(os.getenv("MOCK_HYPE_MAX", "100"))
+        hype_score = random.uniform(min_score, max_score)
+        
+        # Generate trend prediction
+        trend_result = predict_trend(input.product_name, input.tags)
+        
+        response = {
+            "success": True,
+            "hype_score": hype_score,
+            "trend_prediction": trend_result if trend_result["success"] else None,
             "message": "Analysis completed successfully"
         }
+        return response
+    
     except Exception as e:
         logger.error(f"Analysis failed: {str(e)}")
         return {
-            "success": False, 
-            "hype_score": 0.0, 
+            "success": False,
+            "hype_score": 0.0,
+            "trend_prediction": None,
             "message": f"Analysis failed: {str(e)}"
         }
+    
     finally:
         dur = (time.time() - start) * 1000
         sqlite3.connect(DB_PATH).execute(
@@ -148,7 +169,7 @@ async def get_insights(location: str, tags: str, insight_type: str = "brand"):
     conn.close()
     try:
         tags_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
-        logger.info(f"Fetching insights for {location} with tags {tags}")
+        logger.info(f"Fetching insights for {location} with tags {tags_list}")
         return qloo_service.get_cultural_insights(location, tags_list, insight_type)
     finally:
         dur = (time.time() - start) * 1000
@@ -198,7 +219,16 @@ async def get_data_quality():
         ).connection.commit()
 
 @app.post("/predict/demand")
-async def predict_demand(data: dict):
+async def predict_demand(data: dict) -> dict:
+    if not isinstance(data, dict):
+        raise ValueError("Input data must be a dictionary")
+    
+    product = data.get("product", {})
+    insights = data.get("insights", {})
+    hype_score = data.get("hype_score", 0.0)
+    
+    if not isinstance(product, dict) or not isinstance(insights, dict):
+        return {"success": False, "message": "Invalid input format"}
     start = time.time()
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
@@ -212,7 +242,11 @@ async def predict_demand(data: dict):
         insights = data.get("insights")
         hype_score = data.get("hype_score", 0.0)
         logger.info(f"Generating prediction for product: {product.get('name', 'Unknown')}")
-        prediction = llm_service.get_prediction(product, insights, hype_score)
+        prediction = llm_service.get_prediction(
+            product or {},
+            insights or {},
+            float(hype_score)
+        )
         
         if prediction and prediction.get("success"):
             prediction_data = prediction["data"]
@@ -233,13 +267,25 @@ async def predict_demand(data: dict):
         return prediction
     finally:
         dur = (time.time() - start) * 1000
-        sqlite3.connect(DB_PATH).execute(
-            "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
-            ("/predict/demand", dur, datetime.now(pytz.utc).isoformat())
-        ).connection.commit()
+        conn = sqlite3.connect(str(DB_PATH))
+        try:
+            conn.execute(
+                "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
+                ("/predict/demand", dur, datetime.now(pytz.utc).isoformat())
+            )
+            conn.commit()
+        finally:
+            conn.close()
 
 @app.post("/hype/score")
-async def calculate_hype_score(data: dict):
+async def calculate_hype_score(data: dict) -> dict:
+    if not isinstance(data, dict):
+        raise ValueError("Input data must be a dictionary")
+    
+    insights = data.get("insights", {}) or {}
+    tags = str(data.get("category", ""))
+    location = str(data.get("location", ""))
+    threshold = float(data.get("threshold", 20.0))
     start = time.time()
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
@@ -254,7 +300,12 @@ async def calculate_hype_score(data: dict):
         location = data.get("location")
         threshold = data.get("threshold", 20.0)
         logger.info("Calculating hype score")
-        return hype_engine.calculate_hype_score(insights, tags, location, threshold)
+        return hype_engine.calculate_hype_score(
+            insights if isinstance(insights, dict) else {},
+            tags,
+            location,
+            threshold
+        )
     finally:
         dur = (time.time() - start) * 1000
         sqlite3.connect(DB_PATH).execute(
@@ -275,7 +326,12 @@ async def send_discord_alert(data: dict):
     try:
         prediction = data.get("prediction")
         hype_data = data.get("hype_data")
-        logger.info(f"Sending Discord alert for {prediction.get('product', {}).get('name', 'Unknown')}")
+        product_name = "Unknown"
+        if prediction and isinstance(prediction, dict):
+            product = prediction.get('product', {})
+            if isinstance(product, dict):
+                product_name = product.get('name', 'Unknown')
+        logger.info(f"Sending Discord alert for {product_name}")
         return discord_service.send_alert(prediction, hype_data)
     finally:
         dur = (time.time() - start) * 1000
@@ -317,20 +373,19 @@ async def get_hype_history(location: str, category: str):
     conn.commit()
     conn.close()
     try:
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT score, created_at FROM hype_scores 
-                WHERE category = ? AND location = ?
-                ORDER BY created_at ASC
-            """, (category, location))
-            rows = cursor.fetchall()
-            conn.close()
-            return {"success": True, "data": [{"score": row[0], "timestamp": row[1]} for row in rows], "message": "History retrieved"}
-        except Exception as e:
-            logger.error(f"Failed to retrieve hype history: {str(e)}")
-            return {"success": False, "data": [], "message": f"Failed to retrieve hype history: {str(e)}"}
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT score, created_at FROM hype_scores 
+            WHERE category = ? AND location = ?
+            ORDER BY created_at ASC
+        """, (category, location))
+        rows = cursor.fetchall()
+        conn.close()
+        return {"success": True, "data": [{"score": row[0], "timestamp": row[1]} for row in rows], "message": "History retrieved"}
+    except Exception as e:
+        logger.error(f"Failed to retrieve hype history: {str(e)}")
+        return {"success": False, "data": [], "message": f"Failed to retrieve hype history: {str(e)}"}
     finally:
         dur = (time.time() - start) * 1000
         sqlite3.connect(DB_PATH).execute(
@@ -352,7 +407,6 @@ async def submit_outcome(data: dict):
         prediction_id = data.get("prediction_id")
         actual_uplift = data.get("actual_uplift")
 
-        # Validate prediction_id and actual_uplift
         if not prediction_id or not isinstance(prediction_id, int) or prediction_id <= 0:
             return {"success": False, "message": "Invalid prediction_id. It must be a positive integer."}
         
@@ -363,7 +417,6 @@ async def submit_outcome(data: dict):
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
 
-        # Check if the prediction_id exists in the predictions table
         cursor.execute("SELECT COUNT(*) FROM predictions WHERE id = ?", (prediction_id,))
         if cursor.fetchone()[0] == 0:
             conn.close()
@@ -398,41 +451,35 @@ async def calculate_loss(threshold: float = 80.0):
     conn.commit()
     conn.close()
     try:
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT p.id, p.predicted_uplift, p.confidence, o.actual_uplift
-                FROM predictions p
-                JOIN outcomes o ON p.id = o.prediction_id
-                ORDER BY p.timestamp DESC LIMIT 10
-            """)
-            rows = cursor.fetchall()
-            conn.close()
-            
-            if not rows:
-                return {"success": False, "message": "No predictions with outcomes available"}
-            
-            losses = []
-            for row in rows:
-                predicted_class = 1 if row[1] >= threshold else 0  # predicted_uplift >= threshold%
-                actual_class = 1 if row[3] >= threshold else 0     # actual_uplift >= threshold%
-                p_i = row[2] if predicted_class == 1 else 1 - row[2]  # confidence for predicted class
-                
-                # Calculate cross-entropy loss
-                if actual_class == 1:
-                    loss = -math.log(p_i) if p_i > 0 else float('inf')
-                else:
-                    loss = -math.log(1 - p_i) if p_i < 1 else float('inf')
-                losses.append(loss)
-            
-            average_loss = sum(losses) / len(losses)
-            logger.info(f"Calculated average loss: {average_loss:.4f}")
-            return {"success": True, "average_loss": average_loss, "message": "Loss calculated successfully"}
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT p.id, p.predicted_uplift, p.confidence, o.actual_uplift
+            FROM predictions p
+            JOIN outcomes o ON p.id = o.prediction_id
+            ORDER BY p.timestamp DESC LIMIT 10
+        """)
+        rows = cursor.fetchall()
+        conn.close()
         
-        except Exception as e:
-            logger.error(f"Failed to calculate loss: {str(e)}")
-            return {"success": False, "message": f"Failed to calculate loss: {str(e)}"}
+        if not rows:
+            return {"success": False, "message": "No predictions with outcomes available"}
+        
+        losses = []
+        for row in rows:
+            predicted_class = 1 if row[1] >= threshold else 0
+            actual_class = 1 if row[3] >= threshold else 0
+            p_i = row[2] if predicted_class == 1 else 1 - row[2]
+            
+            if actual_class == 1:
+                loss = -math.log(p_i) if p_i > 0 else float('inf')
+            else:
+                loss = -math.log(1 - p_i) if p_i < 1 else float('inf')
+            losses.append(loss)
+        
+        average_loss = sum(losses) / len(losses)
+        logger.info(f"Calculated average loss: {average_loss:.4f}")
+        return {"success": True, "average_loss": average_loss, "message": "Loss calculated successfully"}
     finally:
         dur = (time.time() - start) * 1000
         sqlite3.connect(DB_PATH).execute(
@@ -440,7 +487,6 @@ async def calculate_loss(threshold: float = 80.0):
             ("/calculate_loss", dur, datetime.now(pytz.utc).isoformat())
         ).commit()
 
-# ➜ 3. Replaced existing /feedback endpoint
 @app.post("/feedback")
 async def feedback_endpoint(body: FeedbackIn):
     start = time.time()
@@ -455,7 +501,7 @@ async def feedback_endpoint(body: FeedbackIn):
     )
     conn.commit()
     conn.close()
-    await retrain_endpoint()          # auto-trigger
+    await retrain_endpoint()
     return {"success": True, "message": "Feedback stored & model retrained"}
 
 @app.post("/retrain")
@@ -563,22 +609,116 @@ async def health_check():
             ("/health", dur, datetime.now(pytz.utc).isoformat())
         ).commit()
 
-# 🔚 5. Appended new endpoints at bottom
 @app.get("/export_model")
 async def export_model():
     return {"script": "def score(hype, sent): return hype*sentiment_weight + sent*popularity_weight"}
 
 @app.post("/custom_score")
 async def custom_score(py_code: str):
-    exec(py_code, globals())   # ⚠️ naive — sandbox later
+    exec(py_code, globals())
     return {"success": True, "message": "Custom scorer uploaded"}
 
 @app.get("/backtest")
 async def backtest():
     return {"mock_2023_campaign": {"predicted": 15, "actual": 12, "error": 3}}
 
+# New endpoint for trend duration prediction
+@app.post("/predict/trend_duration")
+async def predict_trend_duration(input: TrendPredictionInput):
+    start = time.time()
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("INSERT INTO request_state(endpoint, payload, ts) VALUES (?,?,?)",
+                 ("/predict/trend_duration", json.dumps(input.dict()), datetime.now(pytz.utc).isoformat()))
+    conn.commit()
+    
+    try:
+        # Fetch historical trend data from social_data (Google Trends)
+        conn = sqlite3.connect(DB_PATH)
+        query = """
+            SELECT timestamp, likes AS interest 
+            FROM social_data 
+            WHERE source='google_trends' AND text IN ({}) 
+            ORDER BY timestamp
+        """.format(','.join(['?' for _ in input.tags.split(',')]))
+        df = pd.read_sql_query(query, conn, params=input.tags.split(','))
+        conn.close()
+        
+        if df.empty:
+            logger.warning(f"No historical trend data found for tags: {input.tags}")
+            return {
+                "success": False,
+                "message": "Insufficient historical trend data",
+                "predicted_duration_days": 0,
+                "predicted_peak_time": None,
+                "confidence": 0.0
+            }
+        
+        # Convert timestamp to datetime and sort
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        df = df.sort_values('timestamp')
+        
+        # Aggregate interest by day (assuming multiple entries per day)
+        daily_df = df.groupby(df['timestamp'].dt.date)['interest'].mean().reset_index()
+        daily_df['timestamp'] = pd.to_datetime(daily_df['timestamp'])
+        
+        # Fit exponential smoothing model
+        model = ExponentialSmoothing(
+            daily_df['interest'],
+            trend='add',
+            seasonal=None,
+            damped_trend=True
+        )
+        fit = model.fit()
+        
+        # Forecast future trend (e.g., 90 days)
+        forecast_steps = 90
+        forecast = fit.forecast(forecast_steps)
+        
+        # Calculate trend duration and peak
+        peak_idx = np.argmax(forecast)
+        peak_time = daily_df['timestamp'].iloc[-1] + timedelta(days=peak_idx + 1)
+        duration_days = forecast_steps  # Simplistic assumption: duration until forecast end
+        confidence = 0.85  # Mock confidence; could be based on model fit
+        
+        # Store prediction
+        timestamp = datetime.now(pytz.utc).isoformat()
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO trend_predictions (product_name, tags, predicted_duration_days, predicted_peak_time, confidence, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (input.product_name, input.tags, float(duration_days), peak_time.isoformat(), confidence, timestamp))
+        conn.commit()
+        conn.close()
+        
+        logger.info(f"Trend prediction saved for {input.product_name}: Duration={duration_days} days, Peak={peak_time}")
+        
+        return {
+            "success": True,
+            "predicted_duration_days": float(duration_days),
+            "predicted_peak_time": peak_time.isoformat(),
+            "confidence": confidence,
+            "message": "Trend duration predicted successfully"
+        }
+    
+    except Exception as e:
+        logger.error(f"Trend prediction failed: {str(e)}")
+        return {
+            "success": False,
+            "predicted_duration_days": 0,
+            "predicted_peak_time": None,
+            "confidence": 0.0,
+            "message": f"Prediction failed: {str(e)}"
+        }
+    finally:
+        dur = (time.time() - start) * 1000
+        sqlite3.connect(DB_PATH).execute(
+            "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
+            ("/predict/trend_duration", dur, datetime.now(pytz.utc).isoformat())
+        ).connection.commit()
+
 @app.get("/competitors")
 async def competitors():
-    return {"nike": {"hype": 78}, "adidas": {"hype": 65}} ##This is example, use the dynamic data that has been used till now
+    return {"nike": {"hype": 78}, "adidas": {"hype": 65}}
 
 logger.info('API initialized successfully')

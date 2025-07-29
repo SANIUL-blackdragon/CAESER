@@ -15,11 +15,14 @@ import os
 import sys
 from datetime import datetime
 from dotenv import load_dotenv
-load_dotenv()  # Load environment variables from .env file
+load_dotenv()
 
-# Add scrapers directory to path for Google Trends import
 sys.path.append('../scrapers')
-from google_trends import get_google_trends, store_trend
+try:
+    from scrapers.google_trends import get_google_trends, store_trend
+except ImportError:
+    st.error("Failed to import google_trends module. Please ensure the scrapers package is installed.")
+    st.stop()
 
 logger = setup_logging()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -27,31 +30,43 @@ logger = logging.getLogger(__name__)
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
+if not isinstance(DB_PATH, str):
+    st.error("Invalid DB_PATH configuration")
+    st.stop()
 st.set_page_config(page_title="CÆSER Dashboard", layout="wide")
 
-st.markdown("""
+primary_color = os.getenv("PRIMARY_COLOR", "#667eea")
+text_color = os.getenv("TEXT_COLOR", "#333")
+st.markdown(f"""
     <style>
-        .market-selector__dropdown { margin-bottom: 1rem; }
-        .insight-visualizer__chart { max-width: 100%; }
-        .prediction-dashboard__container { padding: 1rem; background-color: #f9f9f9; border-radius: 8px; }
-        .product-keywords__input { width: 100%; }
-        .product-description__textarea { width: 100%; min-height: 100px; }
-        .data-quality__widget { background-color: #f0f0f0; padding: 1rem; border-radius: 8px; }
-        .tabs-container { margin-top: 2rem; }
-        @media (max-width: 768px) {
-            .market-selector__dropdown { font-size: 14px; }
-            .insight-visualizer__chart { height: 300px; }
-        }
-        :root {
-            --primary-color: #667eea;
-            --text-color: #333;
-        }
-        .stButton>button { background-color: var(--primary-color); color: white; }
+        .market-selector__dropdown {{ margin-bottom: {os.getenv("DROPDOWN_MARGIN", "1rem")}; }}
+        .insight-visualizer__chart {{ max-width: 100%; }}
+        .prediction-dashboard__container {{
+            padding: {os.getenv("DASHBOARD_PADDING", "1rem")};
+            background-color: {os.getenv("DASHBOARD_BG", "#f9f9f9")};
+            border-radius: {os.getenv("DASHBOARD_RADIUS", "8px")};
+        }}
+        .product-keywords__input {{ width: 100%; }}
+        .product-description__textarea {{ width: 100%; min-height: 100px; }}
+        .data-quality__widget {{
+            background-color: {os.getenv("WIDGET_BG", "#f0f0f0")};
+            padding: {os.getenv("WIDGET_PADDING", "1rem")};
+            border-radius: {os.getenv("WIDGET_RADIUS", "8px")};
+        }}
+        .tabs-container {{ margin-top: {os.getenv("TABS_MARGIN", "2rem")}; }}
+        @media (max-width: 768px) {{
+            .market-selector__dropdown {{ font-size: {os.getenv("MOBILE_FONT_SIZE", "14px")}; }}
+            .insight-visualizer__chart {{ height: {os.getenv("MOBILE_CHART_HEIGHT", "300px")}; }}
+        }}
+        :root {{
+            --primary-color: {primary_color};
+            --text-color: {text_color};
+        }}
+        .stButton>button {{ background-color: var(--primary-color); color: white; }}
     </style>
 """, unsafe_allow_html=True)
 
 def init_store_table():
-    """Initialize the store_data table if it doesn't exist"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
@@ -67,7 +82,6 @@ def init_store_table():
     conn.close()
 
 def user_provided_store_data():
-    """Widget for uploading store data via CSV"""
     st.subheader("Upload Store Data")
     uploaded_file = st.file_uploader("Choose a CSV file (product, sales, date)", type="csv")
     
@@ -95,9 +109,9 @@ def user_provided_store_data():
             st.error(f"Error processing file: {str(e)}")
 
 def fetch_and_display_trends():
-    """Widget for Google Trends search"""
     st.subheader("Google Trends Search")
-    keywords_input = st.text_input("Enter keywords (comma-separated, e.g., sneakers, boots):")
+    keywords_input = st.text_input("Enter keywords (comma-separated):",
+                                 placeholder="e.g., electronics, fashion, sports")
     
     if st.button("Fetch Trends"):
         if not keywords_input:
@@ -108,42 +122,47 @@ def fetch_and_display_trends():
         with st.spinner("Fetching Google Trends data..."):
             try:
                 trends = get_google_trends(keywords)
-                if not trends:
-                    st.warning("No trends data found")
+                if not trends or not isinstance(trends, dict):
+                    st.warning("No trends data found or invalid format")
                     return
-                    
-                for keyword, interest in trends.items():
-                    store_trend(keyword, interest)
                 
-                st.success("Trends fetched and stored successfully")
-                trends_df = pd.DataFrame({
-                    "Keyword": list(trends.keys()),
-                    "Interest": list(trends.values()),
-                    "Source": "google_trends",
-                    "Timestamp": datetime.now().isoformat()
-                })
+                try:
+                    for keyword, interest in trends.items():
+                        store_trend(keyword, interest)
+                    
+                    st.success("Trends fetched and stored successfully")
+                    trends_df = pd.DataFrame({
+                        "Keyword": list(trends.keys()),
+                        "Interest": list(trends.values()),
+                        "Source": "google_trends",
+                        "Timestamp": datetime.now().isoformat()
+                    })
+                except AttributeError as e:
+                    st.error(f"Invalid trends data format: {str(e)}")
+                    return
                 st.dataframe(trends_df)
             except Exception as e:
                 st.error(f"Error fetching trends: {str(e)}")
 
 def product_input_form():
-    """Form for product details and optional target market"""
     st.subheader("Product Details")
-    product_name = st.text_input("Product Name", help="e.g., Air Jordan 1")
+    product_name = st.text_input("Product Name", help="e.g., Wireless Headphones")
     description = st.text_area("Product Description", help="Describe the product")
-    tags = st.text_input("Product Tags (comma-separated)", help="e.g., sneakers, fashion, streetwear")
+    tags = st.text_input("Product Tags (comma-separated)", help="e.g., electronics, audio, gadgets")
 
     st.subheader("Target Market (Optional)")
-    location = st.text_input("Location", help="e.g., New York, NY or leave blank for global")
-    age_range = st.text_input("Age Range", help="e.g., 18-25 or leave blank")
-    gender = st.selectbox("Gender", ["All", "Male", "Female"], index=0)
-    insight_type = st.selectbox("Insight Type", ["brand", "demographics", "heatmap"], key="insight_type")
+    location = st.text_input("Location", help="e.g., San Francisco, CA or blank for global")
+    age_range = st.text_input("Age Range", help="e.g., 25-35 or blank")
+    gender_options = os.getenv("GENDER_OPTIONS", "All,Male,Female").split(",")
+    insight_types = os.getenv("INSIGHT_TYPES", "brand,demographics,heatmap").split(",")
+    
+    gender = st.selectbox("Gender", gender_options, index=0)
+    insight_type = st.selectbox("Insight Type", insight_types)
     threshold = st.number_input("Hype Change Threshold (%)", min_value=0.0, max_value=100.0, value=20.0, step=1.0)
 
     return product_name, description, tags, location, age_range, gender, insight_type, threshold
 
 def insight_visualizer(insights, insight_type, location, tags):
-    """Visualize cultural insights"""
     st.subheader("Cultural Insights")
     if not insights or not insights.get("success"):
         st.error("Failed to fetch cultural insights. Please try again.")
@@ -188,8 +207,7 @@ def insight_visualizer(insights, insight_type, location, tags):
         st.error(f"Error rendering insights: {str(e)}")
         return None
 
-def prediction_dashboard(predictions, hype_score):
-    """Display predictions and strategies"""
+def prediction_dashboard(predictions, hype_score, trend_prediction):
     st.subheader("Demand Predictions and Strategies")
     if not predictions or not predictions.get("success"):
         st.error("Failed to generate predictions. Please try again.")
@@ -199,12 +217,17 @@ def prediction_dashboard(predictions, hype_score):
     with col1:
         st.metric("Demand Uplift", f"{predictions['data'].get('uplift', 'Unknown')}%")
         st.metric("Confidence Score", f"{predictions['data'].get('confidence', 'Unknown')}")
-        st.metric("Hype Score", f"{hype_score.get('averageScore', 'Unknown')}")
-        if hype_score.get("change_detected", False):
-            st.warning(f"Significant change detected: {hype_score['change_percent']}%")
+        st.metric("Hype Score", f"{hype_score}")
+        if trend_prediction and trend_prediction.get("success"):
+            st.metric("Trend Peak", f"{trend_prediction['predicted_peak_days']} days")
+        else:
+            st.warning("Trend prediction unavailable")
     with col2:
         st.write("**Recommended Strategy**")
         st.write(predictions["data"].get("strategy", "Unknown"))
+        if trend_prediction and trend_prediction.get("success"):
+            st.write("**Trend Peak Date**")
+            st.write(trend_prediction["predicted_peak_date"])
     
     trend_data = predictions["data"].get("trend", [])
     if trend_data:
@@ -217,15 +240,17 @@ def prediction_dashboard(predictions, hype_score):
         st.warning("No trend data available.")
     
     return pd.DataFrame({
-        "Metric": ["Demand Uplift", "Confidence Score", "Hype Score", "Strategy"],
+        "Metric": ["Demand Uplift", "Confidence Score", "Hype Score", "Strategy"] + 
+                  (["Trend Peak Days", "Trend Peak Date"] if trend_prediction and trend_prediction.get("success") else []),
         "Value": [f"{predictions['data'].get('uplift', 'Unknown')}%",
                   f"{predictions['data'].get('confidence', 'Unknown')}",
-                  f"{hype_score.get('averageScore', 'Unknown')}",
-                  predictions["data"].get("strategy", "Unknown")]
+                  f"{hype_score}",
+                  predictions["data"].get("strategy", "Unknown")] +
+                  ([str(trend_prediction["predicted_peak_days"]), trend_prediction["predicted_peak_date"]] 
+                   if trend_prediction and trend_prediction.get("success") else [])
     })
 
 def export_report(insights_df, predictions_df, format_type):
-    """Export analysis report"""
     if insights_df is not None and predictions_df is not None:
         report_df = pd.concat([insights_df, predictions_df], axis=1, keys=["Insights", "Predictions"])
         if format_type == "PDF":
@@ -249,7 +274,6 @@ def export_report(insights_df, predictions_df, format_type):
     return None, None, None
 
 def data_quality_widget():
-    """Display data quality metrics"""
     st.subheader("Data Quality Report")
     try:
         response = requests.get(f"{API_BASE_URL}/data_quality", timeout=5)
@@ -267,7 +291,6 @@ def data_quality_widget():
         st.error(f"Error fetching data quality: {str(e)}")
 
 def llm_data_quality_widget():
-    """Display LLM data quality metrics"""
     st.subheader("LLM Data Quality Report")
     try:
         response = requests.get(f"{API_BASE_URL}/llm_data_quality", timeout=5)
@@ -288,7 +311,6 @@ def llm_data_quality_widget():
         st.error(f"Error fetching LLM data quality: {str(e)}")
 
 def main():
-    """Main application function"""
     st.title("CÆSER: Cultural Affinity Simulation Engine for Retail")
     
     init_store_table()
@@ -306,7 +328,7 @@ def main():
             
             with st.spinner("Analyzing product..."):
                 try:
-                    # Call analyze endpoint to collect data
+                    # Call updated analyze endpoint
                     analyze_payload = {
                         "product_name": product_name,
                         "description": description,
@@ -322,6 +344,7 @@ def main():
                         return
                     
                     hype_score = analyze_result.get("hype_score", 0.0)
+                    trend_prediction = analyze_result.get("trend_prediction")
                     
                     # Fetch cultural insights
                     tags_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
@@ -356,7 +379,7 @@ def main():
                     
                     # Display results
                     insights_df = insight_visualizer(insights, insight_type, location or "Global", tags)
-                    predictions_df = prediction_dashboard(predictions, {"averageScore": hype_score})
+                    predictions_df = prediction_dashboard(predictions, hype_score, trend_prediction)
                     
                     data_quality_widget()
                     llm_data_quality_widget()
@@ -370,7 +393,11 @@ def main():
                             mime=mime
                         )
                     
-                    discord_payload = {"prediction": {"product": product, **predictions.get("data", {})}, "hype_data": {"averageScore": hype_score}}
+                    discord_payload = {
+                        "prediction": {"product": product, **predictions.get("data", {})},
+                        "hype_data": {"averageScore": hype_score},
+                        "trend_prediction": trend_prediction
+                    }
                     requests.post(f"{API_BASE_URL}/discord/alert", json=discord_payload, timeout=5)
                     
                 except requests.RequestException as e:
@@ -402,24 +429,6 @@ def main():
     with tab3:
         st.header("Google Trends Integration")
         fetch_and_display_trends()
-        st.subheader("Existing Trends Data")
-        conn = sqlite3.connect(DB_PATH)
-        trends_df = pd.read_sql_query(
-            "SELECT text AS keyword, likes AS interest, timestamp FROM social_data WHERE source='google_trends'", 
-            conn
-        )
-        conn.close()
-        
-        if not trends_df.empty:
-            st.dataframe(trends_df)
-            st.download_button(
-                label="Download Trends Data as CSV",
-                data=trends_df.to_csv(index=False).encode('utf-8'),
-                file_name="trends_data.csv",
-                mime="text/csv"
-            )
-        else:
-            st.info("No trends data available")
 
 if __name__ == "__main__":
     main()

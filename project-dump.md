@@ -1,5 +1,5 @@
 ﻿# Project Dump: D:\LAPTOP\TO_EARN\AI\CAESER
-Generated: 2025-07-29 01:21:37
+Generated: 2025-07-29 07:58:41
 Max File Size: 10MB
 
 ---
@@ -10,39 +10,33 @@ Max File Size: 10MB
 ``$language
 
 # API Keys
-QLOO_API_KEY=Ed8qH8iz9GVhxRR2JVkVjVpwcxx1vy_at3TQPxIekkY
-OPENROUTER_API_KEY=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
+QLOO_API_KEY=your_qloo_api_key_here
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+
 # Database Configuration
 DB_PATH=./data/caeser.db
 
-# API Base URL for deployment
+# API Configuration
 API_BASE_URL=http://localhost:8000
 
-# Email Configuration
-EMAIL_HOST=smtp.gmail.com
+# Email Configuration (optional)
+EMAIL_HOST=smtp.example.com
 EMAIL_PORT=587
-EMAIL_USER=your_email@gmail.com
-EMAIL_PASSWORD=your_app_password
-EMAIL_RECIPIENT=recipient@example.com
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/xxx/yyy/zzz
+EMAIL_USER=your_email@example.com
+EMAIL_PASSWORD=your_email_password
+EMAIL_RECIPIENT=notifications@example.com
 
-# Google Sheets Configuration
-GOOGLE_SHEETS_API_KEY=AIzaSyD-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-GOOGLE_SHEETS_CREDENTIALS={"type":"service_account",...} # JSON credentials
-SPREADSHEET_ID=your_spreadsheet_id
-SALESFORCE_CLIENT_ID=your_client_id
-SALESFORCE_CLIENT_SECRET=your_client_secret
-SALESFORCE_USERNAME=your_username
-SALESFORCE_PASSWORD=your_password
-SALESFORCE_TOKEN=your_security_token
-SALESFORCE_INSTANCE_URL=https://your_instance.salesforce.com
+# Slack Configuration (optional)
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/your/webhook/url
 
-# Twitter API Configuration
-TWITTER_API_KEY=your_twitter_api_key
-TWITTER_API_SECRET=your_twitter_api_secret
-TWITTER_ACCESS_TOKEN=your_twitter_access_token
-TWITTER_ACCESS_TOKEN_SECRET=your_twitter_access_token_secret
-PROXY_LIST=proxy1,proxy2,proxy3
+# Google Sheets Configuration (optional)
+GOOGLE_SHEETS_API_KEY=your_google_sheets_api_key
+GOOGLE_SHEETS_CREDENTIALS={"type": "service_account", "project_id": "your_project_id"}
+
+# Prediction Configuration
+DEFAULT_FORECAST_DAYS=90
+MIN_TREND_DATA_POINTS=3
+DEFAULT_CONFIDENCE_THRESHOLD=0.85
 `
 
 
@@ -50,89 +44,57 @@ PROXY_LIST=proxy1,proxy2,proxy3
 
 ``$language
 
-# This is a template for the .env file. Replace the placeholder values with your own configuration.
-
 # API Keys
-# Obtain your Qloo API key by contacting Qloo at support@qloo.com
 QLOO_API_KEY=your_qloo_api_key
-
-# Obtain your OpenRouter API key by signing up at https://openrouter.ai
 OPENROUTER_API_KEY=your_openrouter_api_key
 
 # Database Configuration
-# Path to the SQLite database file (you can change this if needed)
 DB_PATH=./data/caeser.db
 
-# API Base URL for deployment
-# Default is localhost for development; update for production if necessary
+# API Configuration
 API_BASE_URL=http://localhost:8000
 
 # Email Configuration
-# SMTP host for sending emails (e.g., smtp.gmail.com for Gmail)
 EMAIL_HOST=smtp.gmail.com
-
-# SMTP port (usually 587 for TLS)
 EMAIL_PORT=587
-
-# Your email address for sending emails
 EMAIL_USER=your_email@gmail.com
-
-# Your email password or app-specific password (for Gmail, use an app password)
 EMAIL_PASSWORD=your_app_password
-
-# Recipient email address for notifications
 EMAIL_RECIPIENT=recipient@example.com
 
-# Slack Webhook URL for notifications
-# Set up a webhook in your Slack workspace at https://slack.com/apps/A0F7XDUAZ-incoming-webhooks
+# Slack Configuration
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/your/webhook/url
 
 # Google Sheets Configuration
-# Your Google Sheets API key (enable the API in Google Cloud Console)
 GOOGLE_SHEETS_API_KEY=your_google_sheets_api_key
-
-# Service account credentials JSON for Google Sheets
-# Replace with your own service account credentials JSON
-GOOGLE_SHEETS_CREDENTIALS={"type": "service_account", "project_id": "your_project_id", ...}
-
-# ID of the Google Spreadsheet to use
+GOOGLE_SHEETS_CREDENTIALS={"type": "service_account", "project_id": "your_project_id"}
 SPREADSHEET_ID=your_spreadsheet_id
 
 # Salesforce Configuration
-# Your Salesforce client ID (from your connected app)
 SALESFORCE_CLIENT_ID=your_client_id
-
-# Your Salesforce client secret
 SALESFORCE_CLIENT_SECRET=your_client_secret
-
-# Your Salesforce username
 SALESFORCE_USERNAME=your_username
-
-# Your Salesforce password
 SALESFORCE_PASSWORD=your_password
-
-# Your Salesforce security token
 SALESFORCE_TOKEN=your_security_token
-
-# Your Salesforce instance URL
 SALESFORCE_INSTANCE_URL=https://your_instance.salesforce.com
 
 # Twitter API Configuration
-# Your Twitter API key (from Twitter Developer Portal)
 TWITTER_API_KEY=your_twitter_api_key
-
-# Your Twitter API secret
 TWITTER_API_SECRET=your_twitter_api_secret
-
-# Your Twitter access token
 TWITTER_ACCESS_TOKEN=your_twitter_access_token
-
-# Your Twitter access token secret
 TWITTER_ACCESS_TOKEN_SECRET=your_twitter_access_token_secret
 
-# Proxy List (optional)
-# Comma-separated list of proxy URLs for scraping tasks
+# Proxy Configuration
 PROXY_LIST=proxy1,proxy2,proxy3
+
+# Prediction Configuration
+DEFAULT_FORECAST_DAYS=90
+MIN_TREND_DATA_POINTS=3
+DEFAULT_CONFIDENCE_THRESHOLD=0.85
+
+# Frontend Configuration
+DEFAULT_KEYWORDS=sneakers,boots
+DEFAULT_GENDER_OPTIONS=All,Male,Female
+DEFAULT_INSIGHT_TYPES=brand,demographics,heatmap
 `
 
 
@@ -813,34 +775,6 @@ datefmt = %H:%M:%S
 `
 
 
-## File: deploy_monitors.py
-
-``$language
-
-import os
-import shutil
-
-# Directories to skip
-SKIP_DIRS = {'.git', 'node_modules', '__pycache__', 'venv'}
-
-# Source monitoring script
-SOURCE_FILE = '.usage_monitor.py'
-
-def deploy_monitors():
-    for root, dirs, files in os.walk('.'):
-        # Skip unwanted directories
-        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
-        
-        target_path = os.path.join(root, SOURCE_FILE)
-        if not os.path.exists(target_path):
-            shutil.copy(SOURCE_FILE, target_path)
-            print(f"Deployed to {target_path}")
-
-if __name__ == "__main__":
-    deploy_monitors()
-`
-
-
 ## File: docker-compose.yml
 
 ``$language
@@ -946,7 +880,6 @@ function Show-Tree {
 Show-Tree
 `
 ## TREE
-
 +-- api/
 |   +-- controllers/
 |   +-- models/
@@ -957,6 +890,7 @@ Show-Tree
 |   |   |-- hype_engine.py
 |   |   |-- integrations_service.py
 |   |   |-- llm_service.py
+|   |   |-- predict_trend.py
 |   |   |-- qloo_service.py
 |   +-- utils/
 |   |   |-- logging.py
@@ -1023,7 +957,6 @@ Show-Tree
 |-- .gitignore
 |-- alembic.ini
 |-- caeser_visuals.html
-|-- deploy_monitors.py
 |-- docker-compose.yml
 |-- Dockerfile
 |-- eslint.config.mjs
@@ -1031,10 +964,11 @@ Show-Tree
 |-- package-lock.json
 |-- package.json
 |-- project-dump.md
-|-- ProjectDumper - Copy.ps1
+|-- ProjectDumper.ps1
 |-- README.md
 |-- requirements.txt
 |-- tree.ps1
+
 
 ## File: api\
 
@@ -1112,43 +1046,28 @@ if __name__ == "__main__":
 
 ``$language
 
-from api.utils.logging import setup_logging
-logger = setup_logging()
 from fastapi import FastAPI
 from .services import qloo_service, llm_service, discord_service, hype_engine, integrations_service, data_quality_service
+from .services.predict_trend import predict_trend
 import logging
 import sqlite3
 import os
 import pytz
 from datetime import datetime
-import math
-from pydantic import BaseModel
-from typing import Optional
 import subprocess
 import random
+import time
 from pydantic import BaseModel
-import time, traceback, json
-
-# ➜ 1. Added at top with other imports
-import time, json
+from typing import Optional
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
+if not isinstance(DB_PATH, str):
+    raise ValueError("DB_PATH must be a string")
 
-# Global variable for historical forecasts
-historical_forecasts = []
-
-class AnalyzeInput(BaseModel):
-    product_name: str
-    description: str
-    tags: str
-    target_area: Optional[str] = None
-    locations: Optional[str] = None
-    gender: Optional[str] = None
-    
 class FeedbackIn(BaseModel):
     user_id: str
     product_name: str
@@ -1161,12 +1080,24 @@ class RetrainOut(BaseModel):
     message: str
     new_weights: dict
 
+class TrendPredictionInput(BaseModel):
+    product_name: str
+    tags: str
+    time_period: str  # Optional, e.g., "90 days" (not used in initial version)
+
+class AnalyzeInput(BaseModel):
+    product_name: str
+    description: str
+    tags: str
+    target_area: Optional[str] = None
+    locations: Optional[str] = None
+    gender: Optional[str] = None
+
 @app.on_event("startup")
 async def startup_event():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(str(DB_PATH))
     cursor = conn.cursor()
     
-    # Create system_events table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS system_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1176,7 +1107,6 @@ async def startup_event():
         )
     """)
     
-    # Create predictions and outcomes tables
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS predictions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1188,114 +1118,113 @@ async def startup_event():
         )
     """)
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS outcomes (
-            prediction_id INTEGER,
-            actual_uplift REAL,
-            timestamp TEXT,
-            FOREIGN KEY(prediction_id) REFERENCES predictions(id)
+        CREATE TABLE IF NOT EXISTS trend_predictions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_name TEXT,
+            tags TEXT,
+            predicted_peak_days REAL,
+            predicted_peak_date TEXT,
+            confidence REAL,
+            timestamp TEXT
         )
     """)
     
-    # Log startup time in UTC
     utc_time = datetime.now(pytz.utc).isoformat()
     cursor.execute("""
         INSERT INTO system_events (event_type, timestamp)
         VALUES (?, ?)
     """, ("startup", utc_time))
     
-    # Load historical forecasts
-    cursor.execute("""
-        SELECT score, timestamp FROM hype_scores 
-        ORDER BY timestamp DESC LIMIT 100
-    """)
-    global historical_forecasts
-    historical_forecasts = cursor.fetchall()
-    
     conn.commit()
     conn.close()
-    logger.info(f"System started at {utc_time}, loaded {len(historical_forecasts)} historical forecasts")
+    logger.info(f"System started at {utc_time}")
 
-# ➜ 2. Wrapped all endpoints with logging
 @app.post("/analyze")
 async def analyze(input: AnalyzeInput):
     start = time.time()
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
         "INSERT INTO request_state(endpoint, payload, ts) VALUES (?,?,?)",
-        ("/analyze", json.dumps(input.dict()), datetime.now(pytz.utc).isoformat()))
+        ("/analyze", input.json(), datetime.now(pytz.utc).isoformat()))
     conn.commit()
     conn.close()
+    
     try:
-        """Endpoint to trigger analysis pipeline"""
-        try:
-            # Parse inputs
-            keywords = [kw.strip() for kw in input.tags.split(",")]
-            locations = [loc.strip() for loc in input.locations.split(",")] if input.locations else []
-            gender = input.gender
-            
-            # Build command for scraping
-            cmd = [
-                "scrapy", "crawl", "social_media", 
-                "-a", f"keywords={','.join(keywords)}"
-            ]
-            
-            if locations:
-                cmd.extend(["-a", f"locations={','.join(locations)}"])
-            if gender:
-                cmd.extend(["-a", f"gender={gender}"])
-            
-            # Run scraping process
-            logger.info(f"Running scraping command: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            
-            if result.returncode != 0:
-                logger.error(f"Scraping failed: {result.stderr}")
-                return {"success": False, "hype_score": 0.0, "message": f"Scraping failed: {result.stderr}"}
-            
-            logger.info(f"Scraping completed: {result.stdout}")
-            
-            # Simulate data processing and analysis (MVP: mock data)
-            # In a real implementation, this would call the analysis pipeline
-            hype_score = random.uniform(0, 100)  # Mock hype score for MVP
-            
-            return {
-                "success": True, 
-                "hype_score": hype_score, 
-                "message": "Analysis completed successfully"
-            }
-        except Exception as e:
-            logger.error(f"Analysis failed: {str(e)}")
-            return {
-                "success": False, 
-                "hype_score": 0.0, 
-                "message": f"Analysis failed: {str(e)}"
-            }
+        keywords = [kw.strip() for kw in input.tags.split(",")]
+        locations = [loc.strip() for loc in input.locations.split(",")] if input.locations else []
+        gender = input.gender
+        
+        # Trigger data collection with target set to product_name
+        cmd = [
+            "scrapy", "crawl", "social_media",
+            "-a", f"target={input.product_name}",
+            "-a", f"keywords={','.join(keywords)}"
+        ]
+        if locations:
+            cmd.extend(["-a", f"locations={','.join(locations)}"])
+        if gender:
+            cmd.extend(["-a", f"gender={gender}"])
+        
+        logger.info(f"Running scraping command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            logger.error(f"Scraping failed: {result.stderr}")
+            return {"success": False, "hype_score": 0.0, "trend_prediction": None, "message": f"Scraping failed: {result.stderr}"}
+        
+        logger.info(f"Scraping completed: {result.stdout}")
+        # Use configured mock score range or real calculation if available
+        min_score = float(os.getenv("MOCK_HYPE_MIN", "0"))
+        max_score = float(os.getenv("MOCK_HYPE_MAX", "100"))
+        hype_score = random.uniform(min_score, max_score)
+        
+        # Generate trend prediction
+        trend_result = predict_trend(input.product_name, input.tags)
+        
+        response = {
+            "success": True,
+            "hype_score": hype_score,
+            "trend_prediction": trend_result if trend_result["success"] else None,
+            "message": "Analysis completed successfully"
+        }
+        return response
+    
+    except Exception as e:
+        logger.error(f"Analysis failed: {str(e)}")
+        return {
+            "success": False,
+            "hype_score": 0.0,
+            "trend_prediction": None,
+            "message": f"Analysis failed: {str(e)}"
+        }
+    
     finally:
         dur = (time.time() - start) * 1000
         sqlite3.connect(DB_PATH).execute(
             "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
             ("/analyze", dur, datetime.now(pytz.utc).isoformat())
-        ).commit()
+        ).connection.commit()
 
-@app.get("/insights/{location}/{category}")
-async def get_insights(location: str, category: str, insight_type: str = "brand"):
+@app.get("/insights/{location}")
+async def get_insights(location: str, tags: str, insight_type: str = "brand"):
     start = time.time()
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
         "INSERT INTO request_state(endpoint, payload, ts) VALUES (?,?,?)",
-        (f"/insights/{location}/{category}", json.dumps({"insight_type": insight_type}), datetime.now(pytz.utc).isoformat())
+        (f"/insights/{location}", json.dumps({"tags": tags, "insight_type": insight_type}), datetime.now(pytz.utc).isoformat())
     )
     conn.commit()
     conn.close()
     try:
-        logger.info(f"Fetching insights for {location}/{category}/{insight_type}")
-        return qloo_service.get_cultural_insights(location, category, insight_type)
+        tags_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
+        logger.info(f"Fetching insights for {location} with tags {tags_list}")
+        return qloo_service.get_cultural_insights(location, tags_list, insight_type)
     finally:
         dur = (time.time() - start) * 1000
         sqlite3.connect(DB_PATH).execute(
             "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
-            (f"/insights/{location}/{category}", dur, datetime.now(pytz.utc).isoformat())
-        ).commit()
+            (f"/insights/{location}", dur, datetime.now(pytz.utc).isoformat())
+        ).connection.commit()
 
 @app.get("/llm_data_quality")
 async def get_llm_data_quality():
@@ -1315,7 +1244,7 @@ async def get_llm_data_quality():
         sqlite3.connect(DB_PATH).execute(
             "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
             ("/llm_data_quality", dur, datetime.now(pytz.utc).isoformat())
-        ).commit()
+        ).connection.commit()
 
 @app.get("/data_quality")
 async def get_data_quality():
@@ -1335,10 +1264,19 @@ async def get_data_quality():
         sqlite3.connect(DB_PATH).execute(
             "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
             ("/data_quality", dur, datetime.now(pytz.utc).isoformat())
-        ).commit()
+        ).connection.commit()
 
 @app.post("/predict/demand")
-async def predict_demand(data: dict):
+async def predict_demand(data: dict) -> dict:
+    if not isinstance(data, dict):
+        raise ValueError("Input data must be a dictionary")
+    
+    product = data.get("product", {})
+    insights = data.get("insights", {})
+    hype_score = data.get("hype_score", 0.0)
+    
+    if not isinstance(product, dict) or not isinstance(insights, dict):
+        return {"success": False, "message": "Invalid input format"}
     start = time.time()
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
@@ -1350,10 +1288,14 @@ async def predict_demand(data: dict):
     try:
         product = data.get("product")
         insights = data.get("insights")
+        hype_score = data.get("hype_score", 0.0)
         logger.info(f"Generating prediction for product: {product.get('name', 'Unknown')}")
-        prediction = llm_service.get_prediction(product, insights)
+        prediction = llm_service.get_prediction(
+            product or {},
+            insights or {},
+            float(hype_score)
+        )
         
-        # Save prediction to database
         if prediction and prediction.get("success"):
             prediction_data = prediction["data"]
             predicted_uplift = prediction_data.get("uplift", 0.0)
@@ -1365,7 +1307,7 @@ async def predict_demand(data: dict):
             cursor.execute("""
                 INSERT INTO predictions (product_name, category, predicted_uplift, confidence, timestamp)
                 VALUES (?, ?, ?, ?, ?)
-            """, (product["name"], product["category"], predicted_uplift, confidence, timestamp))
+            """, (product["name"], ','.join(product["tags"]), predicted_uplift, confidence, timestamp))
             conn.commit()
             conn.close()
             logger.info(f"Saved prediction for {product['name']} to database")
@@ -1373,13 +1315,25 @@ async def predict_demand(data: dict):
         return prediction
     finally:
         dur = (time.time() - start) * 1000
-        sqlite3.connect(DB_PATH).execute(
-            "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
-            ("/predict/demand", dur, datetime.now(pytz.utc).isoformat())
-        ).commit()
+        conn = sqlite3.connect(str(DB_PATH))
+        try:
+            conn.execute(
+                "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
+                ("/predict/demand", dur, datetime.now(pytz.utc).isoformat())
+            )
+            conn.commit()
+        finally:
+            conn.close()
 
 @app.post("/hype/score")
-async def calculate_hype_score(data: dict):
+async def calculate_hype_score(data: dict) -> dict:
+    if not isinstance(data, dict):
+        raise ValueError("Input data must be a dictionary")
+    
+    insights = data.get("insights", {}) or {}
+    tags = str(data.get("category", ""))
+    location = str(data.get("location", ""))
+    threshold = float(data.get("threshold", 20.0))
     start = time.time()
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
@@ -1390,17 +1344,22 @@ async def calculate_hype_score(data: dict):
     conn.close()
     try:
         insights = data.get("insights")
-        category = data.get("category")
+        tags = data.get("category")  # Assuming tags are passed as category for compatibility
         location = data.get("location")
         threshold = data.get("threshold", 20.0)
         logger.info("Calculating hype score")
-        return hype_engine.calculate_hype_score(insights, category, location, threshold)
+        return hype_engine.calculate_hype_score(
+            insights if isinstance(insights, dict) else {},
+            tags,
+            location,
+            threshold
+        )
     finally:
         dur = (time.time() - start) * 1000
         sqlite3.connect(DB_PATH).execute(
             "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
             ("/hype/score", dur, datetime.now(pytz.utc).isoformat())
-        ).commit()
+        ).connection.commit()
 
 @app.post("/discord/alert")
 async def send_discord_alert(data: dict):
@@ -1415,14 +1374,19 @@ async def send_discord_alert(data: dict):
     try:
         prediction = data.get("prediction")
         hype_data = data.get("hype_data")
-        logger.info(f"Sending Discord alert for {prediction.get('product', {}).get('name', 'Unknown')}")
+        product_name = "Unknown"
+        if prediction and isinstance(prediction, dict):
+            product = prediction.get('product', {})
+            if isinstance(product, dict):
+                product_name = product.get('name', 'Unknown')
+        logger.info(f"Sending Discord alert for {product_name}")
         return discord_service.send_alert(prediction, hype_data)
     finally:
         dur = (time.time() - start) * 1000
         sqlite3.connect(DB_PATH).execute(
             "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
             ("/discord/alert", dur, datetime.now(pytz.utc).isoformat())
-        ).commit()
+        ).connection.commit()
 
 @app.post("/integrations/send")
 async def send_integrations(data: dict):
@@ -1457,20 +1421,19 @@ async def get_hype_history(location: str, category: str):
     conn.commit()
     conn.close()
     try:
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT score, created_at FROM hype_scores 
-                WHERE category = ? AND location = ?
-                ORDER BY created_at ASC
-            """, (category, location))
-            rows = cursor.fetchall()
-            conn.close()
-            return {"success": True, "data": [{"score": row[0], "timestamp": row[1]} for row in rows], "message": "History retrieved"}
-        except Exception as e:
-            logger.error(f"Failed to retrieve hype history: {str(e)}")
-            return {"success": False, "data": [], "message": f"Failed to retrieve hype history: {str(e)}"}
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT score, created_at FROM hype_scores 
+            WHERE category = ? AND location = ?
+            ORDER BY created_at ASC
+        """, (category, location))
+        rows = cursor.fetchall()
+        conn.close()
+        return {"success": True, "data": [{"score": row[0], "timestamp": row[1]} for row in rows], "message": "History retrieved"}
+    except Exception as e:
+        logger.error(f"Failed to retrieve hype history: {str(e)}")
+        return {"success": False, "data": [], "message": f"Failed to retrieve hype history: {str(e)}"}
     finally:
         dur = (time.time() - start) * 1000
         sqlite3.connect(DB_PATH).execute(
@@ -1492,7 +1455,6 @@ async def submit_outcome(data: dict):
         prediction_id = data.get("prediction_id")
         actual_uplift = data.get("actual_uplift")
 
-        # Validate prediction_id and actual_uplift
         if not prediction_id or not isinstance(prediction_id, int) or prediction_id <= 0:
             return {"success": False, "message": "Invalid prediction_id. It must be a positive integer."}
         
@@ -1503,7 +1465,6 @@ async def submit_outcome(data: dict):
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
 
-        # Check if the prediction_id exists in the predictions table
         cursor.execute("SELECT COUNT(*) FROM predictions WHERE id = ?", (prediction_id,))
         if cursor.fetchone()[0] == 0:
             conn.close()
@@ -1538,41 +1499,35 @@ async def calculate_loss(threshold: float = 80.0):
     conn.commit()
     conn.close()
     try:
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT p.id, p.predicted_uplift, p.confidence, o.actual_uplift
-                FROM predictions p
-                JOIN outcomes o ON p.id = o.prediction_id
-                ORDER BY p.timestamp DESC LIMIT 10
-            """)
-            rows = cursor.fetchall()
-            conn.close()
-            
-            if not rows:
-                return {"success": False, "message": "No predictions with outcomes available"}
-            
-            losses = []
-            for row in rows:
-                predicted_class = 1 if row[1] >= threshold else 0  # predicted_uplift >= threshold%
-                actual_class = 1 if row[3] >= threshold else 0     # actual_uplift >= threshold%
-                p_i = row[2] if predicted_class == 1 else 1 - row[2]  # confidence for predicted class
-                
-                # Calculate cross-entropy loss
-                if actual_class == 1:
-                    loss = -math.log(p_i) if p_i > 0 else float('inf')
-                else:
-                    loss = -math.log(1 - p_i) if p_i < 1 else float('inf')
-                losses.append(loss)
-            
-            average_loss = sum(losses) / len(losses)
-            logger.info(f"Calculated average loss: {average_loss:.4f}")
-            return {"success": True, "average_loss": average_loss, "message": "Loss calculated successfully"}
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT p.id, p.predicted_uplift, p.confidence, o.actual_uplift
+            FROM predictions p
+            JOIN outcomes o ON p.id = o.prediction_id
+            ORDER BY p.timestamp DESC LIMIT 10
+        """)
+        rows = cursor.fetchall()
+        conn.close()
         
-        except Exception as e:
-            logger.error(f"Failed to calculate loss: {str(e)}")
-            return {"success": False, "message": f"Failed to calculate loss: {str(e)}"}
+        if not rows:
+            return {"success": False, "message": "No predictions with outcomes available"}
+        
+        losses = []
+        for row in rows:
+            predicted_class = 1 if row[1] >= threshold else 0
+            actual_class = 1 if row[3] >= threshold else 0
+            p_i = row[2] if predicted_class == 1 else 1 - row[2]
+            
+            if actual_class == 1:
+                loss = -math.log(p_i) if p_i > 0 else float('inf')
+            else:
+                loss = -math.log(1 - p_i) if p_i < 1 else float('inf')
+            losses.append(loss)
+        
+        average_loss = sum(losses) / len(losses)
+        logger.info(f"Calculated average loss: {average_loss:.4f}")
+        return {"success": True, "average_loss": average_loss, "message": "Loss calculated successfully"}
     finally:
         dur = (time.time() - start) * 1000
         sqlite3.connect(DB_PATH).execute(
@@ -1580,7 +1535,6 @@ async def calculate_loss(threshold: float = 80.0):
             ("/calculate_loss", dur, datetime.now(pytz.utc).isoformat())
         ).commit()
 
-# ➜ 3. Replaced existing /feedback endpoint
 @app.post("/feedback")
 async def feedback_endpoint(body: FeedbackIn):
     start = time.time()
@@ -1595,7 +1549,7 @@ async def feedback_endpoint(body: FeedbackIn):
     )
     conn.commit()
     conn.close()
-    await retrain_endpoint()          # auto-trigger
+    await retrain_endpoint()
     return {"success": True, "message": "Feedback stored & model retrained"}
 
 @app.post("/retrain")
@@ -1703,23 +1657,117 @@ async def health_check():
             ("/health", dur, datetime.now(pytz.utc).isoformat())
         ).commit()
 
-# 🔚 5. Appended new endpoints at bottom
 @app.get("/export_model")
 async def export_model():
     return {"script": "def score(hype, sent): return hype*sentiment_weight + sent*popularity_weight"}
 
 @app.post("/custom_score")
 async def custom_score(py_code: str):
-    exec(py_code, globals())   # ⚠️ naive — sandbox later
+    exec(py_code, globals())
     return {"success": True, "message": "Custom scorer uploaded"}
 
 @app.get("/backtest")
 async def backtest():
     return {"mock_2023_campaign": {"predicted": 15, "actual": 12, "error": 3}}
 
+# New endpoint for trend duration prediction
+@app.post("/predict/trend_duration")
+async def predict_trend_duration(input: TrendPredictionInput):
+    start = time.time()
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("INSERT INTO request_state(endpoint, payload, ts) VALUES (?,?,?)",
+                 ("/predict/trend_duration", json.dumps(input.dict()), datetime.now(pytz.utc).isoformat()))
+    conn.commit()
+    
+    try:
+        # Fetch historical trend data from social_data (Google Trends)
+        conn = sqlite3.connect(DB_PATH)
+        query = """
+            SELECT timestamp, likes AS interest 
+            FROM social_data 
+            WHERE source='google_trends' AND text IN ({}) 
+            ORDER BY timestamp
+        """.format(','.join(['?' for _ in input.tags.split(',')]))
+        df = pd.read_sql_query(query, conn, params=input.tags.split(','))
+        conn.close()
+        
+        if df.empty:
+            logger.warning(f"No historical trend data found for tags: {input.tags}")
+            return {
+                "success": False,
+                "message": "Insufficient historical trend data",
+                "predicted_duration_days": 0,
+                "predicted_peak_time": None,
+                "confidence": 0.0
+            }
+        
+        # Convert timestamp to datetime and sort
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        df = df.sort_values('timestamp')
+        
+        # Aggregate interest by day (assuming multiple entries per day)
+        daily_df = df.groupby(df['timestamp'].dt.date)['interest'].mean().reset_index()
+        daily_df['timestamp'] = pd.to_datetime(daily_df['timestamp'])
+        
+        # Fit exponential smoothing model
+        model = ExponentialSmoothing(
+            daily_df['interest'],
+            trend='add',
+            seasonal=None,
+            damped_trend=True
+        )
+        fit = model.fit()
+        
+        # Forecast future trend (e.g., 90 days)
+        forecast_steps = 90
+        forecast = fit.forecast(forecast_steps)
+        
+        # Calculate trend duration and peak
+        peak_idx = np.argmax(forecast)
+        peak_time = daily_df['timestamp'].iloc[-1] + timedelta(days=peak_idx + 1)
+        duration_days = forecast_steps  # Simplistic assumption: duration until forecast end
+        confidence = 0.85  # Mock confidence; could be based on model fit
+        
+        # Store prediction
+        timestamp = datetime.now(pytz.utc).isoformat()
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO trend_predictions (product_name, tags, predicted_duration_days, predicted_peak_time, confidence, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (input.product_name, input.tags, float(duration_days), peak_time.isoformat(), confidence, timestamp))
+        conn.commit()
+        conn.close()
+        
+        logger.info(f"Trend prediction saved for {input.product_name}: Duration={duration_days} days, Peak={peak_time}")
+        
+        return {
+            "success": True,
+            "predicted_duration_days": float(duration_days),
+            "predicted_peak_time": peak_time.isoformat(),
+            "confidence": confidence,
+            "message": "Trend duration predicted successfully"
+        }
+    
+    except Exception as e:
+        logger.error(f"Trend prediction failed: {str(e)}")
+        return {
+            "success": False,
+            "predicted_duration_days": 0,
+            "predicted_peak_time": None,
+            "confidence": 0.0,
+            "message": f"Prediction failed: {str(e)}"
+        }
+    finally:
+        dur = (time.time() - start) * 1000
+        sqlite3.connect(DB_PATH).execute(
+            "INSERT INTO api_calls(endpoint, duration_ms, timestamp) VALUES (?,?,?)",
+            ("/predict/trend_duration", dur, datetime.now(pytz.utc).isoformat())
+        ).connection.commit()
+
 @app.get("/competitors")
 async def competitors():
-    return {"nike": {"hype": 78}, "adidas": {"hype": 65}} ##This is example, use the dynamic data that has been used till now
+    return {"nike": {"hype": 78}, "adidas": {"hype": 65}}
 
 logger.info('API initialized successfully')
 `
@@ -2305,53 +2353,53 @@ def send_integrations(prediction, hype_data):
 ``$language
 
 import os
-import sqlite3
-from openai import OpenAI
-from retrying import retry
-import logging
 import json
 import time
+import sqlite3
+import logging
+from openai import OpenAI
+from typing import Dict
+
+DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+SITE_URL = "http://localhost:8000"
+SITE_NAME = "CAESER"
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-SITE_URL = "https://caeser.example.com"
-SITE_NAME = "CÆSER"
-DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
-
-def sanitize_input(input_data):
-    if isinstance(input_data, str):
-        return input_data.strip().replace(r'[^\w\s,.-]', '')
-    return input_data
+def sanitize_input(input_str: str) -> str:
+    return input_str.strip().replace(r"[^a-zA-Z0-9\s,.-]", "")
 
 def log_llm_data_quality(metric: str, value: float):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO llm_data_quality (metric, value, timestamp)
-        VALUES (?, ?, CURRENT_TIMESTAMP)
-    """, (metric, value))
+        VALUES (?, ?, ?)
+    """, (metric, value, time.time()))
     conn.commit()
     conn.close()
-    logger.info(f"Logged LLM data quality: {metric} = {value}")
 
-@retry(stop_max_attempt_number=3, wait_exponential_multiplier=1000, wait_exponential_max=5000)
-def get_prediction(product, insights):
+def get_prediction(product: Dict, insights: Dict, hype_score: float) -> Dict:
+    """Generate demand prediction and marketing strategy using LLM."""
     if not OPENROUTER_API_KEY:
         logger.error("OPENROUTER_API_KEY not configured")
         raise ValueError("OPENROUTER_API_KEY not configured")
     
-    if not isinstance(product, dict) or not all(key in product for key in ["name", "category", "description"]):
-        logger.error("Invalid product data: must include name, category, description")
+    if not isinstance(product, dict) or not all(key in product for key in ["name", "tags", "description"]):
+        logger.error("Invalid product data: must include name, tags, description")
         raise ValueError("Invalid product data")
     if not isinstance(insights, dict) or not insights.get("data"):
         logger.error("Invalid insights data")
         raise ValueError("Invalid insights data")
     
     product_name = sanitize_input(product["name"])
-    product_category = sanitize_input(product["category"])
+    product_tags = ", ".join([sanitize_input(tag) for tag in product["tags"]])
     product_description = sanitize_input(product["description"])
+    location = sanitize_input(product.get("location", "Global"))
+    age_range = sanitize_input(product.get("age_range", "All"))
+    gender = sanitize_input(product.get("gender", "All"))
     
     client = OpenAI(
         base_url="https://openrouter.ai/api/v1",
@@ -2360,9 +2408,12 @@ def get_prediction(product, insights):
     
     prompt = f"""
     Analyze the following product and cultural insights to predict demand uplift and suggest a marketing strategy.
-    Product: {product_name} ({product_category})
+    Product: {product_name}
+    Tags: {product_tags}
     Description: {product_description}
+    Target Market: {location}, Age: {age_range}, Gender: {gender}
     Cultural Insights: {insights['data']}
+    Hype Score: {hype_score}
     Provide a response in JSON format with 'uplift' (percentage, float), 'strategy' (string), 'confidence' (float between 0 and 1), and 'trend' (list of dicts with 'time' and 'demand').
     """
     
@@ -2383,7 +2434,6 @@ def get_prediction(product, insights):
             logger.error("Invalid LLM response format")
             raise ValueError("Invalid LLM response format")
         
-        # Log data quality metrics
         confidence = parsed_result.get("confidence", 0.0)
         response_time = time.time() - start_time
         log_llm_data_quality("confidence", confidence)
@@ -2394,7 +2444,7 @@ def get_prediction(product, insights):
         parsed_result["cpm"] = 5.0   # TikTok mock CPM ($5)
         return {"success": True, "data": parsed_result, "message": "Prediction generated successfully"}
     except Exception as e:
-        log_llm_data_quality("errors", 1.0)  # Log error occurrence
+        log_llm_data_quality("errors", 1.0)
         logger.error(f"LLM request failed: {str(e)}")
         return {"success": False, "data": None, "message": f"LLM request failed: {str(e)}"}
 
@@ -2417,6 +2467,99 @@ def get_llm_data_quality():
 `
 
 
+## File: api\services\predict_trend.py
+
+``$language
+
+import sqlite3
+import os
+from datetime import datetime, timedelta
+import logging
+import numpy as np
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
+DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def predict_trend(product_name: str, tags: str) -> dict:
+    """
+    Predict the time period of a trend based on Google Trends and social data.
+    
+    Args:
+        product_name (str): Name of the product.
+        tags (str): Comma-separated tags related to the product.
+    
+    Returns:
+        dict: Prediction result with peak days, date, and confidence.
+    """
+    try:
+        # Connect to the database
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Fetch relevant trend data (e.g., from social_data table)
+        tags_list = [tag.strip() for tag in tags.split(",")]
+        query = """
+            SELECT likes, timestamp FROM social_data 
+            WHERE source='google_trends' AND (text LIKE ? OR text IN ({}))
+            ORDER BY timestamp ASC
+        """.format(",".join(["?"] * len(tags_list)))
+        params = [f"%{product_name}%"] + tags_list
+        cursor.execute(query, params)
+        data = cursor.fetchall()
+        
+        if not data:
+            logger.warning(f"No trend data found for {product_name} with tags {tags}")
+            return {"success": False, "message": "No trend data available"}
+        
+        # Extract time series data
+        likes = [row[0] for row in data]
+        timestamps = [datetime.fromisoformat(row[1]) for row in data]
+        
+        # Simple time series prediction using Exponential Smoothing
+        if len(likes) < 3:
+            logger.warning("Insufficient data points for prediction")
+            return {"success": False, "message": "Insufficient data for prediction"}
+        
+        model = ExponentialSmoothing(likes, trend="add", seasonal=None)
+        fit = model.fit()
+        forecast = fit.forecast(90)  # Predict next 90 days
+        peak_idx = np.argmax(forecast)
+        peak_days = peak_idx + 1  # Days until peak
+        peak_date = (timestamps[-1] + timedelta(days=peak_days)).strftime("%Y-%m-%d")
+        confidence = min(0.95, 1.0 - fit.sse / sum(l**2 for l in likes))  # Simple confidence metric
+        
+        # Store the prediction
+        cursor.execute("""
+            INSERT INTO trend_predictions (product_name, tags, predicted_peak_days, predicted_peak_date, confidence, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (product_name, tags, float(peak_days), peak_date, confidence, datetime.now().isoformat()))
+        conn.commit()
+        
+        result = {
+            "success": True,
+            "predicted_peak_days": int(peak_days),
+            "predicted_peak_date": peak_date,
+            "confidence": confidence
+        }
+        logger.info(f"Trend predicted for {product_name}: Peak in {peak_days} days on {peak_date}")
+        return result
+    
+    except Exception as e:
+        logger.error(f"Trend prediction failed: {str(e)}")
+        return {"success": False, "message": f"Prediction failed: {str(e)}"}
+    
+    finally:
+        conn.close()
+
+if __name__ == "__main__":
+    # For testing purposes
+    result = predict_trend("Wireless Headphones", "electronics, audio")
+    print(result)
+`
+
+
 ## File: api\services\qloo_service.py
 
 ``$language
@@ -2426,13 +2569,11 @@ import requests
 import logging
 from retrying import retry
 from cachetools import TTLCache
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
-# Initialize logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Initialize cache (TTL of 1 hour)
 cache = TTLCache(maxsize=100, ttl=3600)
 
 QLOO_API_KEY = os.getenv("QLOO_API_KEY")
@@ -2442,41 +2583,22 @@ def sanitize_input(input_str: str) -> str:
     return input_str.strip().replace(r"[^a-zA-Z0-9\s,.-]", "")
 
 @retry(stop_max_attempt_number=3, wait_exponential_multiplier=1000, wait_exponential_max=5000)
-def get_cultural_insights(location: str, category: str, insight_type: str = "brand") -> Dict:
-    """Fetch cultural insights from Qloo API for a given location and category.
-    
-    Args:
-        location (str): Geographic location (e.g., 'New York, NY').
-        category (str): Product category (e.g., 'sneakers').
-        insight_type (str): Type of insight ('brand', 'demographics', 'heatmap'). Defaults to 'brand'.
-    
-    Returns:
-        Dict: Response with success status, data, and message.
-              Example: {
-                  "success": bool,
-                  "data": {...},
-                  "message": str
-              }
-    
-    Raises:
-        ValueError: If API key or inputs are invalid.
-        requests.RequestException: If API call fails after retries.
-    """
+def get_cultural_insights(location: str, tags: List[str], insight_type: str = "brand") -> Dict:
+    """Fetch cultural insights from Qloo API for a given location and tags."""
     if not QLOO_API_KEY:
         logger.error("QLOO_API_KEY not configured")
         raise ValueError("QLOO_API_KEY not configured")
     if not location or not isinstance(location, str) or not location.strip():
         logger.error("Invalid location provided")
         raise ValueError("Invalid location")
-    if not category or not isinstance(category, str) or not category.strip():
-        logger.error("Invalid category provided")
-        raise ValueError("Invalid category")
+    if not tags or not isinstance(tags, list) or not all(isinstance(tag, str) and tag.strip() for tag in tags):
+        logger.error("Invalid tags provided")
+        raise ValueError("Invalid tags")
     
     location = sanitize_input(location)
-    category = sanitize_input(category)
+    tags = [sanitize_input(tag) for tag in tags]
     
-    # Check cache
-    cache_key = f"{insight_type}:{location}:{category}"
+    cache_key = f"{insight_type}:{location}:{','.join(tags)}"
     if cache_key in cache:
         logger.info(f"Returning cached insights for {cache_key}")
         return cache[cache_key]
@@ -2486,31 +2608,32 @@ def get_cultural_insights(location: str, category: str, insight_type: str = "bra
         "Content-Type": "application/json"
     }
     
+    filter_tags = ",".join([f"urn:tag:keyword:brand:{tag.lower()}" for tag in tags])
     params = {}
     if insight_type == "brand":
         params = {
             "filter.type": "urn:entity:brand",
-            "signal.location.query": location,
-            "filter.tags": f"urn:tag:keyword:brand:{category.lower()}"
+            "signal.location.query": location if location != "global" else None,
+            "filter.tags": filter_tags
         }
     elif insight_type == "demographics":
         params = {
             "filter.type": "urn:demographics",
-            "signal.location.query": location,
-            "signal.interests.tags": f"urn:tag:keyword:brand:{category.lower()}"
+            "signal.location.query": location if location != "global" else None,
+            "signal.interests.tags": filter_tags
         }
     elif insight_type == "heatmap":
         params = {
             "filter.type": "urn:heatmap",
-            "filter.location.query": location,
-            "signal.interests.tags": f"urn:tag:keyword:brand:{category.lower()}"
+            "filter.location.query": location if location != "global" else None,
+            "signal.interests.tags": filter_tags
         }
     else:
         logger.error(f"Unsupported insight type: {insight_type}")
         raise ValueError(f"Unsupported insight type: {insight_type}")
     
     try:
-        logger.info(f"Fetching {insight_type} insights for {location}/{category}")
+        logger.info(f"Fetching {insight_type} insights for {location} with tags {tags}")
         response = requests.get(BASE_URL, headers=headers, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
@@ -2636,46 +2759,60 @@ from api.utils.logging import setup_logging
 import sqlite3
 import os
 import sys
-import pandas as pd
 from datetime import datetime
 from dotenv import load_dotenv
-load_dotenv()  # Load environment variables from .env file
+load_dotenv()
 
-# Add scrapers directory to path for Google Trends import
 sys.path.append('../scrapers')
-from google_trends import get_google_trends, store_trend
+try:
+    from scrapers.google_trends import get_google_trends, store_trend
+except ImportError:
+    st.error("Failed to import google_trends module. Please ensure the scrapers package is installed.")
+    st.stop()
 
 logger = setup_logging()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-import os
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
+if not isinstance(DB_PATH, str):
+    st.error("Invalid DB_PATH configuration")
+    st.stop()
 st.set_page_config(page_title="CÆSER Dashboard", layout="wide")
 
-st.markdown("""
+primary_color = os.getenv("PRIMARY_COLOR", "#667eea")
+text_color = os.getenv("TEXT_COLOR", "#333")
+st.markdown(f"""
     <style>
-        .market-selector__dropdown { margin-bottom: 1rem; }
-        .insight-visualizer__chart { max-width: 100%; }
-        .prediction-dashboard__container { padding: 1rem; background-color: #f9f9f9; border-radius: 8px; }
-        .product-keywords__input { width: 100%; }
-        .product-description__textarea { width: 100%; min-height: 100px; }
-        .data-quality__widget { background-color: #f0f0f0; padding: 1rem; border-radius: 8px; }
-        .tabs-container { margin-top: 2rem; }
-        @media (max-width: 768px) {
-            .market-selector__dropdown { font-size: 14px; }
-            .insight-visualizer__chart { height: 300px; }
-        }
-        :root {
-            --primary-color: #667eea;
-            --text-color: #333;
-        }
-        .stButton>button { background-color: var(--primary-color); color: white; }
+        .market-selector__dropdown {{ margin-bottom: {os.getenv("DROPDOWN_MARGIN", "1rem")}; }}
+        .insight-visualizer__chart {{ max-width: 100%; }}
+        .prediction-dashboard__container {{
+            padding: {os.getenv("DASHBOARD_PADDING", "1rem")};
+            background-color: {os.getenv("DASHBOARD_BG", "#f9f9f9")};
+            border-radius: {os.getenv("DASHBOARD_RADIUS", "8px")};
+        }}
+        .product-keywords__input {{ width: 100%; }}
+        .product-description__textarea {{ width: 100%; min-height: 100px; }}
+        .data-quality__widget {{
+            background-color: {os.getenv("WIDGET_BG", "#f0f0f0")};
+            padding: {os.getenv("WIDGET_PADDING", "1rem")};
+            border-radius: {os.getenv("WIDGET_RADIUS", "8px")};
+        }}
+        .tabs-container {{ margin-top: {os.getenv("TABS_MARGIN", "2rem")}; }}
+        @media (max-width: 768px) {{
+            .market-selector__dropdown {{ font-size: {os.getenv("MOBILE_FONT_SIZE", "14px")}; }}
+            .insight-visualizer__chart {{ height: {os.getenv("MOBILE_CHART_HEIGHT", "300px")}; }}
+        }}
+        :root {{
+            --primary-color: {primary_color};
+            --text-color: {text_color};
+        }}
+        .stButton>button {{ background-color: var(--primary-color); color: white; }}
     </style>
 """, unsafe_allow_html=True)
 
 def init_store_table():
-    """Initialize the store_data table if it doesn't exist"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
@@ -2691,7 +2828,6 @@ def init_store_table():
     conn.close()
 
 def user_provided_store_data():
-    """Widget for uploading store data via CSV"""
     st.subheader("Upload Store Data")
     uploaded_file = st.file_uploader("Choose a CSV file (product, sales, date)", type="csv")
     
@@ -2714,16 +2850,14 @@ def user_provided_store_data():
             conn.commit()
             conn.close()
             st.success(f"Successfully uploaded {len(df)} store records")
-            
-            # Display uploaded data
             st.dataframe(df.head())
         except Exception as e:
             st.error(f"Error processing file: {str(e)}")
 
 def fetch_and_display_trends():
-    """Widget for Google Trends search"""
     st.subheader("Google Trends Search")
-    keywords_input = st.text_input("Enter keywords (comma-separated, e.g., sneakers, boots):")
+    keywords_input = st.text_input("Enter keywords (comma-separated):",
+                                 placeholder="e.g., electronics, fashion, sports")
     
     if st.button("Fetch Trends"):
         if not keywords_input:
@@ -2734,51 +2868,47 @@ def fetch_and_display_trends():
         with st.spinner("Fetching Google Trends data..."):
             try:
                 trends = get_google_trends(keywords)
-                if not trends:
-                    st.warning("No trends data found")
+                if not trends or not isinstance(trends, dict):
+                    st.warning("No trends data found or invalid format")
                     return
+                
+                try:
+                    for keyword, interest in trends.items():
+                        store_trend(keyword, interest)
                     
-                # Store trends in database
-                for keyword, interest in trends.items():
-                    store_trend(keyword, interest)
-                
-                st.success("Trends fetched and stored successfully")
-                
-                # Display trends data
-                trends_df = pd.DataFrame({
-                    "Keyword": list(trends.keys()),
-                    "Interest": list(trends.values()),
-                    "Source": "google_trends",
-                    "Timestamp": datetime.now().isoformat()
-                })
+                    st.success("Trends fetched and stored successfully")
+                    trends_df = pd.DataFrame({
+                        "Keyword": list(trends.keys()),
+                        "Interest": list(trends.values()),
+                        "Source": "google_trends",
+                        "Timestamp": datetime.now().isoformat()
+                    })
+                except AttributeError as e:
+                    st.error(f"Invalid trends data format: {str(e)}")
+                    return
                 st.dataframe(trends_df)
-                
             except Exception as e:
                 st.error(f"Error fetching trends: {str(e)}")
 
-def market_selector():
-    st.subheader("Select Market and Category")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        location = st.selectbox("Location", ["New York, NY", "London", "Tokyo"], key="location")
-    with col2:
-        category = st.selectbox("Category", ["sneakers", "electronics", "fashion"], key="category")
-    with col3:
-        threshold = st.number_input("Hype Change Threshold (%)", min_value=0.0, max_value=100.0, value=20.0, step=1.0)
-    insight_type = st.selectbox("Insight Type", ["brand", "demographics", "heatmap"], key="insight_type")
-    return location, category, insight_type, threshold
+def product_input_form():
+    st.subheader("Product Details")
+    product_name = st.text_input("Product Name", help="e.g., Wireless Headphones")
+    description = st.text_area("Product Description", help="Describe the product")
+    tags = st.text_input("Product Tags (comma-separated)", help="e.g., electronics, audio, gadgets")
 
-def product_keywords():
-    st.subheader("Product Keywords")
-    keywords = st.text_input("Enter keywords (comma-separated)", help="e.g., sneakers, streetwear")
-    return [k.strip() for k in keywords.split(",") if k.strip()] if keywords else []
+    st.subheader("Target Market (Optional)")
+    location = st.text_input("Location", help="e.g., San Francisco, CA or blank for global")
+    age_range = st.text_input("Age Range", help="e.g., 25-35 or blank")
+    gender_options = os.getenv("GENDER_OPTIONS", "All,Male,Female").split(",")
+    insight_types = os.getenv("INSIGHT_TYPES", "brand,demographics,heatmap").split(",")
+    
+    gender = st.selectbox("Gender", gender_options, index=0)
+    insight_type = st.selectbox("Insight Type", insight_types)
+    threshold = st.number_input("Hype Change Threshold (%)", min_value=0.0, max_value=100.0, value=20.0, step=1.0)
 
-def product_description():
-    st.subheader("Product Description")
-    description = st.text_area("Enter product description")
-    return description.strip() if description else ""
+    return product_name, description, tags, location, age_range, gender, insight_type, threshold
 
-def insight_visualizer(insights, insight_type, location, category):
+def insight_visualizer(insights, insight_type, location, tags):
     st.subheader("Cultural Insights")
     if not insights or not insights.get("success"):
         st.error("Failed to fetch cultural insights. Please try again.")
@@ -2818,21 +2948,12 @@ def insight_visualizer(insights, insight_type, location, category):
             fig.update_layout(title="Regional Affinity Heatmap")
             st.plotly_chart(fig, use_container_width=True)
             return pd.DataFrame(z, columns=x, index=y)
-        
-        history_response = requests.get(f"{API_BASE_URL}/hype/history/{location}/{category}", timeout=10)
-        history = history_response.json() if history_response.status_code == 200 else {"data": []}
-        if history["data"]:
-            df_history = pd.DataFrame(history["data"])
-            fig_history = px.line(df_history, x="timestamp", y="score", title="Hype Score Trends",
-                                  color_discrete_sequence=["#667eea"])
-            st.plotly_chart(fig_history, use_container_width=True)
-            return df_history
     except Exception as e:
         logger.error(f"Error rendering insights: {str(e)}")
         st.error(f"Error rendering insights: {str(e)}")
         return None
 
-def prediction_dashboard(predictions, hype_score):
+def prediction_dashboard(predictions, hype_score, trend_prediction):
     st.subheader("Demand Predictions and Strategies")
     if not predictions or not predictions.get("success"):
         st.error("Failed to generate predictions. Please try again.")
@@ -2842,12 +2963,17 @@ def prediction_dashboard(predictions, hype_score):
     with col1:
         st.metric("Demand Uplift", f"{predictions['data'].get('uplift', 'Unknown')}%")
         st.metric("Confidence Score", f"{predictions['data'].get('confidence', 'Unknown')}")
-        st.metric("Hype Score", f"{hype_score.get('averageScore', 'Unknown')}")
-        if hype_score.get("change_detected", False):
-            st.warning(f"Significant change detected: {hype_score['change_percent']}%")
+        st.metric("Hype Score", f"{hype_score}")
+        if trend_prediction and trend_prediction.get("success"):
+            st.metric("Trend Peak", f"{trend_prediction['predicted_peak_days']} days")
+        else:
+            st.warning("Trend prediction unavailable")
     with col2:
         st.write("**Recommended Strategy**")
         st.write(predictions["data"].get("strategy", "Unknown"))
+        if trend_prediction and trend_prediction.get("success"):
+            st.write("**Trend Peak Date**")
+            st.write(trend_prediction["predicted_peak_date"])
     
     trend_data = predictions["data"].get("trend", [])
     if trend_data:
@@ -2860,11 +2986,14 @@ def prediction_dashboard(predictions, hype_score):
         st.warning("No trend data available.")
     
     return pd.DataFrame({
-        "Metric": ["Demand Uplift", "Confidence Score", "Hype Score", "Strategy"],
+        "Metric": ["Demand Uplift", "Confidence Score", "Hype Score", "Strategy"] + 
+                  (["Trend Peak Days", "Trend Peak Date"] if trend_prediction and trend_prediction.get("success") else []),
         "Value": [f"{predictions['data'].get('uplift', 'Unknown')}%",
                   f"{predictions['data'].get('confidence', 'Unknown')}",
-                  f"{hype_score.get('averageScore', 'Unknown')}",
-                  predictions["data"].get("strategy", "Unknown")]
+                  f"{hype_score}",
+                  predictions["data"].get("strategy", "Unknown")] +
+                  ([str(trend_prediction["predicted_peak_days"]), trend_prediction["predicted_peak_date"]] 
+                   if trend_prediction and trend_prediction.get("success") else [])
     })
 
 def export_report(insights_df, predictions_df, format_type):
@@ -2927,68 +3056,66 @@ def llm_data_quality_widget():
         logger.error(f"Error fetching LLM data quality: {str(e)}")
         st.error(f"Error fetching LLM data quality: {str(e)}")
 
-def mark_product(user_id, product_name, category):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO marked_products (user_id, product_name, category)
-        VALUES (?, ?, ?)
-    """, (user_id, product_name, category))
-    conn.commit()
-    conn.close()
-
-def get_marked_products(user_id):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT product_name, category FROM marked_products WHERE user_id = ?
-    """, (user_id,))
-    rows = cursor.fetchall()
-    conn.close()
-    return [{"product_name": row[0], "category": row[1]} for row in rows]
-
 def main():
     st.title("CÆSER: Cultural Affinity Simulation Engine for Retail")
     
-    # Initialize store data table
     init_store_table()
     
-    # Create tabs for different sections
     tab1, tab2, tab3 = st.tabs(["Main Dashboard", "Store Data", "Google Trends"])
     
     with tab1:
-        user_id = st.text_input("User ID", help="Enter your user ID", key="user_id")
-        location, category, insight_type, threshold = market_selector()
-        keywords = product_keywords()
-        description = product_description()
+        product_name, description, tags, location, age_range, gender, insight_type, threshold = product_input_form()
         export_format = st.selectbox("Export Format", ["PDF", "Excel", "CSV"], key="export_format")
         
-        if user_id:
-            marked_products = get_marked_products(user_id)
-            if marked_products:
-                st.subheader("Marked Products")
-                for product in marked_products:
-                    st.write(f"{product['product_name']} ({product['category']})")
-        
         if st.button("Generate Insights and Predictions", key="submit"):
-            with st.spinner("Fetching insights and predictions..."):
+            if not (product_name and description and tags):
+                st.error("Please fill in all required fields: Product Name, Description, and Tags.")
+                return
+            
+            with st.spinner("Analyzing product..."):
                 try:
+                    # Call updated analyze endpoint
+                    analyze_payload = {
+                        "product_name": product_name,
+                        "description": description,
+                        "tags": tags,
+                        "target_area": location if location else None,
+                        "locations": location if location else None,
+                        "gender": gender if gender != "All" else None
+                    }
+                    analyze_response = requests.post(f"{API_BASE_URL}/analyze", json=analyze_payload, timeout=60)
+                    analyze_result = analyze_response.json() if analyze_response.status_code == 200 else {}
+                    if not analyze_result.get("success"):
+                        st.error(f"Analysis failed: {analyze_result.get('message', 'Unknown error')}")
+                        return
+                    
+                    hype_score = analyze_result.get("hype_score", 0.0)
+                    trend_prediction = analyze_result.get("trend_prediction")
+                    
+                    # Fetch cultural insights
+                    tags_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
                     insights_response = requests.get(
-                        f"{API_BASE_URL}/insights/{location}/{category}?insight_type={insight_type}",
+                        f"{API_BASE_URL}/insights/{location or 'global'}?tags={','.join(tags_list)}&insight_type={insight_type}",
                         timeout=10
                     )
                     insights = insights_response.json() if insights_response.status_code == 200 else {}
                     
+                    # Prepare product dictionary
                     product = {
-                        "name": ", ".join(keywords) or category,
-                        "category": category,
-                        "description": description or f"{category} product"
+                        "name": product_name,
+                        "tags": tags_list,
+                        "description": description,
+                        "location": location if location else "Global",
+                        "age_range": age_range if age_range else "All",
+                        "gender": gender if gender != "All" else "All"
                     }
                     
-                    if st.checkbox("Mark this product for sentiment tracking", key="mark_product"):
-                        mark_product(user_id, product["name"], category)
-                    
-                    prediction_payload = {"product": product, "insights": insights}
+                    # Generate predictions
+                    prediction_payload = {
+                        "product": product,
+                        "insights": insights,
+                        "hype_score": hype_score
+                    }
                     prediction_response = requests.post(
                         f"{API_BASE_URL}/predict/demand",
                         json=prediction_payload,
@@ -2996,19 +3123,9 @@ def main():
                     )
                     predictions = prediction_response.json() if prediction_response.status_code == 200 else {}
                     
-                    hype_payload = {"insights": insights, "category": category, "location": location, "threshold": threshold, "product_name": product["name"]}
-                    hype_response = requests.post(
-                        f"{API_BASE_URL}/hype/score",
-                        json=hype_payload,
-                        timeout=10
-                    )
-                    hype_score = hype_response.json()
-                    
-                    insights_df = insight_visualizer(insights, insight_type, location, category)
-                    predictions_df = prediction_dashboard(predictions, hype_score)
-                    
-                    if hype_score.get("hourly_sentiment_change"):
-                        st.metric("Hourly Sentiment Change", f"{hype_score['hourly_sentiment_change']}%")
+                    # Display results
+                    insights_df = insight_visualizer(insights, insight_type, location or "Global", tags)
+                    predictions_df = prediction_dashboard(predictions, hype_score, trend_prediction)
                     
                     data_quality_widget()
                     llm_data_quality_widget()
@@ -3022,11 +3139,12 @@ def main():
                             mime=mime
                         )
                     
-                    discord_payload = {"prediction": {"product": product, **predictions.get("data", {})}, "hype_data": hype_score}
+                    discord_payload = {
+                        "prediction": {"product": product, **predictions.get("data", {})},
+                        "hype_data": {"averageScore": hype_score},
+                        "trend_prediction": trend_prediction
+                    }
                     requests.post(f"{API_BASE_URL}/discord/alert", json=discord_payload, timeout=5)
-                    
-                    integrations_payload = {"prediction": {"product": product, **predictions.get("data", {})}, "hype_data": hype_score}
-                    requests.post(f"{API_BASE_URL}/integrations/send", json=integrations_payload, timeout=5)
                     
                 except requests.RequestException as e:
                     logger.error(f"API request failed: {str(e)}")
@@ -3038,8 +3156,6 @@ def main():
     with tab2:
         st.header("Store Data Management")
         user_provided_store_data()
-        
-        # Show existing store data
         st.subheader("Existing Store Data")
         conn = sqlite3.connect(DB_PATH)
         store_df = pd.read_sql_query("SELECT product, sales, date FROM store_data", conn)
@@ -3059,26 +3175,6 @@ def main():
     with tab3:
         st.header("Google Trends Integration")
         fetch_and_display_trends()
-        
-        # Show existing trends data
-        st.subheader("Existing Trends Data")
-        conn = sqlite3.connect(DB_PATH)
-        trends_df = pd.read_sql_query(
-            "SELECT text AS keyword, likes AS interest, timestamp FROM social_data WHERE source='google_trends'", 
-            conn
-        )
-        conn.close()
-        
-        if not trends_df.empty:
-            st.dataframe(trends_df)
-            st.download_button(
-                label="Download Trends Data as CSV",
-                data=trends_df.to_csv(index=False).encode('utf-8'),
-                file_name="trends_data.csv",
-                mime="text/csv"
-            )
-        else:
-            st.info("No trends data available")
 
 if __name__ == "__main__":
     main()
@@ -3546,7 +3642,6 @@ if __name__ == "__main__":
 
 ``$language
 
-# In scrapers/social_media_spider.py
 import scrapy
 import sqlite3
 import requests
@@ -3590,25 +3685,31 @@ class SocialMediaSpider(scrapy.Spider):
         'DOWNLOAD_DELAY': random.uniform(1, 3),
         'ROTATING_PROXY_LIST': PROXY_LIST,
         'RETRY_TIMES': 3,
-        'RETRY_HTTP_CODES': [429, 500, 502, 503, 504]
+        'RETRY_HTTP_CODES': [429, 500, 502, 503, 504],
+        'CONCURRENT_REQUESTS': 32,  # Increase concurrency
+        'DOWNLOAD_TIMEOUT': 180
     }
     ua = UserAgent()
+    MAX_POSTS = 1000000  # Target ~1 GB of data (assuming 1 KB per post)
 
-    def __init__(self, sources='reddit,twitter,tiktok,imdb,ebay', target='sneakers', keywords='', *args, **kwargs):
+    def __init__(self, sources='reddit,twitter,tiktok,instagram,imdb,ebay', target='', keywords='', locations='', gender='', *args, **kwargs):
         super(SocialMediaSpider, self).__init__(*args, **kwargs)
         self.sources = [s.strip().lower() for s in sources.split(',')]
-        self.target = target
+        self.target = target  # No default value, required from frontend
         self.keywords = [kw.strip().lower() for kw in keywords.split(',')] if keywords else []
+        self.locations = [loc.strip().lower() for loc in locations.split(',')] if locations else []
+        self.gender = gender.lower() if gender else ''
         self.start_urls = []
+        self.post_count = 0
         
         if 'reddit' in self.sources:
-            self.start_urls.append(f"https://reddit.com/r/{self.target}")
+            self.start_urls.append(f"https://www.reddit.com/search/?q={self.target}")
         if 'tiktok' in self.sources:
             self.start_urls.append(f"https://www.tiktok.com/search?q={self.target}")
         if 'instagram' in self.sources:
             self.start_urls.append(f"https://www.instagram.com/explore/tags/{self.target}/")
         if 'imdb' in self.sources:
-            self.start_urls.append(f"https://www.imdb.com/search/title/?title_type=feature&genres={self.target}&sort=user_rating,desc")
+            self.start_urls.append(f"https://www.imdb.com/search/title/?title={self.target}")
         if 'ebay' in self.sources:
             self.start_urls.append(f"https://www.ebay.com/sch/i.html?_nkw={self.target}&_sacat=0")
         if 'twitter' not in self.sources:
@@ -3621,14 +3722,16 @@ class SocialMediaSpider(scrapy.Spider):
 
     def start_requests(self):
         for url in self.start_urls:
-            yield Request(url, headers={'User-Agent': self.ua.random}, callback=self.parse)
-        
+            yield Request(url, headers={'User-Agent': self.ua.random}, callback=self.parse, dont_filter=True)
         if 'twitter' in self.sources:
-            query = f"{self.target} {' '.join(self.keywords)}" if self.keywords else self.target
+            query = f"{self.target} {' '.join(self.keywords)} {' '.join(self.locations)}"
             twitter_url = f"https://api.twitter.com/2/tweets/search/recent?query={query}&max_results=100"
-            yield Request(twitter_url, headers=self.twitter_headers, callback=self.parse_twitter, method='GET')
-
+            yield Request(twitter_url, headers=self.twitter_headers, callback=self.parse_twitter, method='GET', dont_filter=True)
+    
     def parse(self, response):
+        if self.post_count >= self.MAX_POSTS:
+            return
+        
         source = 'reddit' if 'reddit' in response.url else 'tiktok' if 'tiktok' in response.url else 'instagram' if 'instagram' in response.url else 'imdb' if 'imdb' in response.url else 'ebay'
         
         if source == 'reddit':
@@ -3642,20 +3745,19 @@ class SocialMediaSpider(scrapy.Spider):
                         "source": source,
                         "timestamp": datetime.now().isoformat()
                     }
+                    self.post_count += 1
             next_page = response.css("a[rel='nofollow next']::attr(href)").get()
-            if next_page:
+            if next_page and self.post_count < self.MAX_POSTS:
                 yield response.follow(next_page, self.parse, headers={'User-Agent': self.ua.random})
         
         elif source == 'tiktok':
-            count = 0
             for video in response.css("div.tiktok-x6y88p-DivItemContainerV2"):
-                if count >= 50:
+                if self.post_count >= self.MAX_POSTS:
                     break
                 text = video.css("div.tiktok-1qb12g8-DivThreeColumnContainer p::text").get(default="").strip().lower()
                 comments = video.css("div.tiktok-1qb12g8-DivCommentContent p::text").getall()
                 if not self.keywords or any(kw in text for kw in self.keywords):
                     likes = video.css("strong.tiktok-1p7xrbz-StrongText::text").get(default="0")
-                    # Append first 5 comments to text
                     comment_text = " | Comments: " + " ".join(comments[:5]) if comments else ""
                     yield {
                         "text": text + comment_text,
@@ -3663,14 +3765,16 @@ class SocialMediaSpider(scrapy.Spider):
                         "source": source,
                         "timestamp": datetime.now().isoformat()
                     }
-                count += 1
+                    self.post_count += 1
             next_page = response.css("a.tiktok-1p7xrbz-AButton::attr(href)").get()
-            if next_page:
+            if next_page and self.post_count < self.MAX_POSTS:
                 time.sleep(random.uniform(2, 5))
                 yield response.follow(next_page, self.parse, headers={'User-Agent': self.ua.random})
         
         elif source == 'instagram':
             for post in response.css("article"):
+                if self.post_count >= self.MAX_POSTS:
+                    break
                 text = post.css("div._a9zs span::text").get(default="").strip().lower()
                 if not self.keywords or any(kw in text for kw in self.keywords):
                     likes = post.css("div.Nm9FK span::text").get(default="0")
@@ -3680,11 +3784,11 @@ class SocialMediaSpider(scrapy.Spider):
                         "source": source,
                         "timestamp": datetime.now().isoformat()
                     }
+                    self.post_count += 1
         
         elif source == 'imdb':
-            count = 0
             for movie in response.css("div.lister-item"):
-                if count >= 50:
+                if self.post_count >= self.MAX_POSTS:
                     break
                 title = movie.css("h3 a::text").get(default="").strip().lower()
                 rating = movie.css("div.ratings-bar strong::text").get(default="0")
@@ -3695,15 +3799,14 @@ class SocialMediaSpider(scrapy.Spider):
                         "source": source,
                         "timestamp": datetime.now().isoformat()
                     }
-                    count += 1
+                    self.post_count += 1
             next_page = response.css("a.next-page::attr(href)").get()
-            if next_page and count < 50:
+            if next_page and self.post_count < self.MAX_POSTS:
                 yield response.follow(next_page, self.parse, headers={'User-Agent': self.ua.random})
         
         elif source == 'ebay':
-            count = 0
             for item in response.css("li.s-item"):
-                if count >= 50:
+                if self.post_count >= self.MAX_POSTS:
                     break
                 title = item.css("h3.s-item__title::text").get(default="").strip().lower()
                 price = item.css("span.s-item__price::text").get(default="0").replace("$", "").replace(",", "").strip()
@@ -3714,9 +3817,9 @@ class SocialMediaSpider(scrapy.Spider):
                         "source": source,
                         "timestamp": datetime.now().isoformat()
                     }
-                    count += 1
+                    self.post_count += 1
             next_page = response.css("a.pagination__next::attr(href)").get()
-            if next_page and count < 50:
+            if next_page and self.post_count < self.MAX_POSTS:
                 yield response.follow(next_page, self.parse, headers={'User-Agent': self.ua.random})
 
     def parse_twitter(self, response):
@@ -3724,6 +3827,8 @@ class SocialMediaSpider(scrapy.Spider):
             data = json.loads(response.text)
             tweets = data.get('data', [])
             for tweet in tweets:
+                if self.post_count >= self.MAX_POSTS:
+                    break
                 text = tweet.get('text', '').lower()
                 if not self.keywords or any(kw in text for kw in self.keywords):
                     yield {
@@ -3732,18 +3837,21 @@ class SocialMediaSpider(scrapy.Spider):
                         "source": "twitter",
                         "timestamp": datetime.now().isoformat()
                     }
+                    self.post_count += 1
         except json.JSONDecodeError:
             self.logger.error("Failed to parse Twitter response")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Social Media Spider")
-    parser.add_argument("--sources", default="reddit,twitter,tiktok,instagram,imdb,ebay", help="Comma-separated sources (e.g., reddit,twitter)")
-    parser.add_argument("--target", default="sneakers", help="Target subreddit or query")
+    parser.add_argument("--sources", default="reddit,twitter,tiktok,instagram,imdb,ebay", help="Comma-separated sources")
+    parser.add_argument("--target", required=True, help="Target query (product name)")
     parser.add_argument("--keywords", default="", help="Comma-separated keywords")
+    parser.add_argument("--locations", default="", help="Comma-separated locations")
+    parser.add_argument("--gender", default="", help="Gender filter")
     args = parser.parse_args()
     
     process = CrawlerProcess()
-    process.crawl(SocialMediaSpider, sources=args.sources, target=args.target, keywords=args.keywords)
+    process.crawl(SocialMediaSpider, sources=args.sources, target=args.target, keywords=args.keywords, locations=args.locations, gender=args.gender)
     process.start()
 `
 
@@ -3751,4 +3859,4 @@ if __name__ == "__main__":
 ---
 ## Summary
 Total files processed: 52
-Completed: 2025-07-29 01:21:59
+Completed: 2025-07-29 07:59:18
