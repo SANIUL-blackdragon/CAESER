@@ -376,7 +376,7 @@ CAESER is evolving toward a next-gen platform code-named ****—an all-encompass
 * Scrape cross-platform reviews and ratings (MAL, IMDb, Steam).
 * Track real-time metrics: Google Trends, TikTok, Reddit, X, Discord.
 * Stealth-scrape with TOR, anti-fingerprint browsers.
-* Ingest logistics (UPS, FedEx), dark-web, credit-card broker data.
+* Ingest logistics (UPS, FedEx), credit-card broker data.
 * Merchant data ingestion: store logs, ad-click streams.
 
 ### 3. Data Processing & Storage
