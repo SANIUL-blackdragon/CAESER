@@ -1,9 +1,32 @@
 services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: caeser_user
+      POSTGRES_PASSWORD: caeser_pass
+      POSTGRES_DB: caeser
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
   caeser-api:
     build: .
-    ports: ["8000:8000"]
+    ports:
+      - "8000:8000"
     env_file: .env
-    volumes: ["./data:/app/data"]
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./data:/app/data
     restart: unless-stopped
 
   caeser-frontend:
@@ -14,8 +37,14 @@ services:
         pip install streamlit requests python-dotenv plotly openpyxl reportlab &&
         streamlit run frontend/src/main.py --server.port=8501 --server.address=0.0.0.0
       "
-    ports: ["8501:8501"]
+    ports:
+      - "8501:8501"
     env_file: .env
-    volumes: [".:/app"]
-    depends_on: [caeser-api]
+    depends_on:
+      - caeser-api
+    volumes:
+      - .:/app
     restart: unless-stopped
+
+volumes:
+  pgdata:

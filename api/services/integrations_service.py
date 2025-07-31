@@ -1,56 +1,84 @@
 import os
+import json
 import requests
 import logging
 import sqlite3
+import backoff
+import boto3
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.oauth2.service_account import Credentials
+from functools import lru_cache
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
-SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
-SALESFORCE_CLIENT_ID = os.getenv("SALESFORCE_CLIENT_ID")
-SALESFORCE_CLIENT_SECRET = os.getenv("SALESFORCE_CLIENT_SECRET")
-SALESFORCE_USERNAME = os.getenv("SALESFORCE_USERNAME")
-SALESFORCE_PASSWORD = os.getenv("SALESFORCE_PASSWORD")
-SALESFORCE_TOKEN = os.getenv("SALESFORCE_TOKEN")
-SALESFORCE_INSTANCE_URL = os.getenv("SALESFORCE_INSTANCE_URL")
+# ------------------------------------------------------------------
+# 0. Secrets Manager helper
+# ------------------------------------------------------------------
+_secrets_client = boto3.client("secretsmanager", region_name=os.getenv("AWS_REGION", "us-east-1"))
 
+def _get_secret(secret_name: str, default=None):
+    """
+    Fetch secret from AWS Secrets Manager; fall back to env var if not found.
+    """
+    try:
+        return _secrets_client.get_secret_value(SecretId=secret_name)["SecretString"]
+    except Exception as e:
+        logger.warning(f"Could not pull secret '{secret_name}' from AWS: {e}")
+        return os.getenv(secret_name, default)
+
+# ------------------------------------------------------------------
+# 1. Configuration
+# ------------------------------------------------------------------
+GOOGLE_SHEETS_CREDENTIALS = _get_secret("GOOGLE_SHEETS_CREDENTIALS")
+SPREADSHEET_ID          = _get_secret("SPREADSHEET_ID")
+SALESFORCE_CLIENT_ID    = _get_secret("SALESFORCE_CLIENT_ID")
+SALESFORCE_CLIENT_SECRET= _get_secret("SALESFORCE_CLIENT_SECRET")
+SALESFORCE_USERNAME     = _get_secret("SALESFORCE_USERNAME")
+SALESFORCE_PASSWORD     = _get_secret("SALESFORCE_PASSWORD")
+SALESFORCE_TOKEN        = _get_secret("SALESFORCE_TOKEN")
+SALESFORCE_INSTANCE_URL = _get_secret("SALESFORCE_INSTANCE_URL")
+DISCORD_WEBHOOK_SECRET_NAME = "discord_webhook"   # AWS secret name
 DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
 
+# ------------------------------------------------------------------
+# 2. Google Sheets helpers
+# ------------------------------------------------------------------
+@lru_cache(maxsize=1)
 def get_google_sheets_service():
+    """
+    Returns a cached Google Sheets service object.
+    """
     try:
         creds = Credentials.from_service_account_info(json.loads(GOOGLE_SHEETS_CREDENTIALS))
-        service = build('sheets', 'v4', credentials=creds)
+        service = build('sheets', 'v4', credentials=creds, cache_discovery=False)
         logger.info("Google Sheets service initialized successfully")
         return service
     except Exception as e:
         logger.error(f"Failed to initialize Google Sheets service: {str(e)}")
         return None
 
+@backoff.on_exception(backoff.expo, HttpError, max_tries=5)
 def append_to_google_sheets(prediction, hype_data):
     if not GOOGLE_SHEETS_CREDENTIALS or not SPREADSHEET_ID:
         logger.error("Google Sheets configuration missing")
         return {"success": False, "message": "Google Sheets configuration missing"}
-    
+
     service = get_google_sheets_service()
     if not service:
         return {"success": False, "message": "Failed to initialize Google Sheets service"}
-    
-    values = [
-        [
-            prediction['product'].get('name', 'Unknown'),
-            prediction['product'].get('category', 'Unknown'),
-            prediction.get('uplift', 0.0),
-            prediction.get('confidence', 0.0),
-            prediction.get('strategy', 'Unknown'),
-            hype_data.get('averageScore', 0.0),
-            hype_data.get('change_percent', 0.0) if hype_data.get('change_detected') else 0.0
-        ]
-    ]
-    
+
+    values = [[
+        prediction['product'].get('name', 'Unknown'),
+        prediction['product'].get('category', 'Unknown'),
+        prediction.get('uplift', 0.0),
+        prediction.get('confidence', 0.0),
+        prediction.get('strategy', 'Unknown'),
+        hype_data.get('averageScore', 0.0),
+        hype_data.get('change_percent', 0.0) if hype_data.get('change_detected') else 0.0
+    ]]
+
     body = {'values': values}
     try:
         service.spreadsheets().values().append(
@@ -65,11 +93,17 @@ def append_to_google_sheets(prediction, hype_data):
         logger.error(f"Failed to append to Google Sheets: {str(e)}")
         return {"success": False, "message": f"Failed to append to Google Sheets: {str(e)}"}
 
+# ------------------------------------------------------------------
+# 3. Salesforce helpers
+# ------------------------------------------------------------------
+@backoff.on_exception(backoff.expo, requests.exceptions.RequestException, max_tries=5)
 def get_salesforce_access_token():
-    if not all([SALESFORCE_CLIENT_ID, SALESFORCE_CLIENT_SECRET, SALESFORCE_USERNAME, SALESFORCE_PASSWORD, SALESFORCE_TOKEN, SALESFORCE_INSTANCE_URL]):
+    required = [SALESFORCE_CLIENT_ID, SALESFORCE_CLIENT_SECRET, SALESFORCE_USERNAME,
+                SALESFORCE_PASSWORD, SALESFORCE_TOKEN, SALESFORCE_INSTANCE_URL]
+    if not all(required):
         logger.error("Salesforce configuration missing")
         return None
-    
+
     auth_url = f"{SALESFORCE_INSTANCE_URL}/services/oauth2/token"
     payload = {
         'grant_type': 'password',
@@ -78,24 +112,21 @@ def get_salesforce_access_token():
         'username': SALESFORCE_USERNAME,
         'password': SALESFORCE_PASSWORD + SALESFORCE_TOKEN
     }
-    try:
-        response = requests.post(auth_url, data=payload, timeout=5)
-        response.raise_for_status()
-        access_token = response.json().get('access_token')
-        if not access_token:
-            logger.error("Failed to get Salesforce access token: No access token in response")
-            return None
-        logger.info("Salesforce access token obtained successfully")
-        return access_token
-    except requests.RequestException as e:
-        logger.error(f"Failed to get Salesforce access token: {str(e)}")
+    response = requests.post(auth_url, data=payload, timeout=10)
+    response.raise_for_status()
+    access_token = response.json().get("access_token")
+    if not access_token:
+        logger.error("No access token in Salesforce response")
         return None
+    logger.info("Salesforce access token obtained successfully")
+    return access_token
 
+@backoff.on_exception(backoff.expo, requests.exceptions.RequestException, max_tries=5)
 def create_salesforce_record(prediction, hype_data):
     access_token = get_salesforce_access_token()
     if not access_token:
         return {"success": False, "message": "Failed to get Salesforce access token"}
-    
+
     headers = {
         'Authorization': f'Bearer {access_token}',
         'Content-Type': 'application/json'
@@ -109,25 +140,66 @@ def create_salesforce_record(prediction, hype_data):
         'Hype_Score__c': hype_data.get('averageScore', 0.0),
         'Hype_Change_Percent__c': hype_data.get('change_percent', 0.0) if hype_data.get('change_detected') else 0.0
     }
-    try:
-        response = requests.post(
-            f"{SALESFORCE_INSTANCE_URL}/services/data/v52.0/sobjects/Opportunity",
-            headers=headers,
-            json=data,
-            timeout=5
-        )
-        response.raise_for_status()
-        logger.info("Salesforce record created successfully")
-        return {"success": True, "message": "Salesforce record created successfully"}
-    except requests.RequestException as e:
-        logger.error(f"Failed to create Salesforce record: {str(e)}")
-        return {"success": False, "message": f"Failed to create Salesforce record: {str(e)}"}
+    response = requests.post(
+        f"{SALESFORCE_INSTANCE_URL}/services/data/v58.0/sobjects/Opportunity",
+        headers=headers,
+        json=data,
+        timeout=10
+    )
+    response.raise_for_status()
+    logger.info("Salesforce record created successfully")
+    return {"success": True, "message": "Salesforce record created successfully"}
 
+# ------------------------------------------------------------------
+# 4. Discord helper (new) – batched alerts
+# ------------------------------------------------------------------
+_discord_alerts_buffer = []
+
+def queue_discord_alert(message: str):
+    """
+    Add message to the in-memory buffer for Discord.
+    """
+    _discord_alerts_buffer.append(message)
+
+@backoff.on_exception(backoff.expo, requests.exceptions.RequestException, max_tries=5)
+def flush_discord_alerts():
+    """
+    Send all queued alerts in one batched POST.
+    """
+    global _discord_alerts_buffer
+    if not _discord_alerts_buffer:
+        return
+
+    webhook_url = _get_secret(DISCORD_WEBHOOK_SECRET_NAME)
+    if not webhook_url:
+        logger.warning("Discord webhook URL not found; skipping alerts.")
+        _discord_alerts_buffer.clear()
+        return
+
+    payload = {"content": "\n".join(_discord_alerts_buffer)}
+    response = requests.post(webhook_url, json=payload, timeout=10)
+    response.raise_for_status()
+    logger.info(f"Sent {len(_discord_alerts_buffer)} Discord alerts")
+    _discord_alerts_buffer.clear()
+
+# ------------------------------------------------------------------
+# 5. Main orchestrator
+# ------------------------------------------------------------------
 def send_integrations(prediction, hype_data):
+    """
+    Push data to Google Sheets, Salesforce, and queue Discord alerts.
+    """
+    # Queue a short Discord message for each prediction
+    product_name = prediction['product'].get('name', 'Unknown')
+    uplift = prediction.get('uplift', 0.0)
+    queue_discord_alert(f"📈 {product_name}: predicted uplift {uplift:.2%}")
+
     results = [
         append_to_google_sheets(prediction, hype_data),
         create_salesforce_record(prediction, hype_data)
     ]
+    flush_discord_alerts()  # send batched alerts
+
     successes = [r["success"] for r in results]
     messages = [r["message"] for r in results]
     return {"success": any(successes), "message": "; ".join(messages)}

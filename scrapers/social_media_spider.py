@@ -1,204 +1,263 @@
-import scrapy
-import sqlite3
-import requests
-import json
+import scrapy, asyncio, aiohttp, sqlite3, json, os, random, time, logging, pathlib
 from datetime import datetime
-import argparse
 from scrapy.crawler import CrawlerProcess
 from scrapy.http import Request
-import os
-import random
 from fake_useragent import UserAgent
-import time
-import json, os, pathlib
-import logging
+from scrapy.downloadermiddlewares.retry import RetryMiddleware
+from scrapy.utils.response import response_status_message
 
-DB_PATH = os.getenv("DB_PATH", "../data/caeser.db")
-TWITTER_API_KEY = os.getenv("TWITTER_API_KEY")
-TWITTER_API_SECRET = os.getenv("TWITTER_API_SECRET")
-TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
-TWITTER_ACCESS_TOKEN_SECRET = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
-PROXY_LIST = os.getenv("PROXY_LIST", "").split(",") if os.getenv("PROXY_LIST") else []
+DB_PATH          = os.getenv("DB_PATH", "../data/caeser.db")
+PROXY_LIST       = os.getenv("PROXY_LIST", "").split(",") if os.getenv("PROXY_LIST") else []
+TWITTER_CREDS    = {
+    "bearer": os.getenv("TWITTER_BEARER")
+}
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# ------------------------------------------------------------------
 class SqlitePipeline:
-    def __init__(self):
+    def open_spider(self, spider):
         self.conn = sqlite3.connect(DB_PATH)
-        self.cursor = self.conn.cursor()
-
-    def process_item(self, item, spider):
-        self.cursor.execute("""
-            INSERT INTO social_data (text, likes, source, timestamp)
-            VALUES (?, ?, ?, ?)
-        """, (item['text'], item['likes'], item['source'], item['timestamp']))
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS social_data(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                text TEXT,
+                likes INTEGER,
+                source TEXT,
+                timestamp TEXT
+            )
+        """)
         self.conn.commit()
-        return item
 
     def close_spider(self, spider):
         self.conn.close()
 
+    def process_item(self, item, spider):
+        self.conn.execute(
+            "INSERT INTO social_data(text, likes, source, timestamp) VALUES (?,?,?,?)",
+            (item["text"], item["likes"], item["source"], item["timestamp"])
+        )
+        self.conn.commit()
+        return item
+
+# ------------------------------------------------------------------
+class DynamicProxyMiddleware:
+    """Rotate proxy per request."""
+    def process_request(self, request, spider):
+        if PROXY_LIST:
+            request.meta["proxy"] = random.choice(PROXY_LIST)
+        return None
+
+# ------------------------------------------------------------------
 class SocialMediaSpider(scrapy.Spider):
     name = "social_media"
-    custom_settings = {
-        'ITEM_PIPELINES': {'__main__.SqlitePipeline': 1},
-        'DOWNLOAD_DELAY': random.uniform(1, 3),
-        'ROTATING_PROXY_LIST': PROXY_LIST,
-        'RETRY_TIMES': 3,
-        'RETRY_HTTP_CODES': [429, 500, 502, 503, 504],
-        'CONCURRENT_REQUESTS': 32,  # Increase concurrency
-        'DOWNLOAD_TIMEOUT': 180
-    }
     ua = UserAgent()
-    MAX_POSTS = 1000000  # Target ~1 GB of data (assuming 1 KB per post)
 
-    def __init__(self, sources='', target='', keywords='', locations='', gender='', *args, **kwargs):
+    custom_settings = {
+        "ITEM_PIPELINES": {"__main__.SqlitePipeline": 1},
+        "DOWNLOADER_MIDDLEWARES": {
+            "__main__.DynamicProxyMiddleware": 350,
+            "__main__.Retry429Middleware": 550,
+        },
+        "DOWNLOAD_DELAY": 1.5,
+        "RANDOMIZE_DOWNLOAD_DELAY": True,
+        "CONCURRENT_REQUESTS": 32,
+        "AUTOTHROTTLE_ENABLED": True,
+        "AUTOTHROTTLE_TARGET_CONCURRENCY": 8,
+        "RETRY_TIMES": 5,
+    }
+
+    def __init__(
+        self,
+        sources="",
+        target="",
+        keywords="",
+        locations="",
+        gender="",
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
-        self.sources = [s.strip().lower() for s in sources.split(',')] if sources else []
-        self.target = target
-        self.keywords = [kw.strip().lower() for kw in keywords.split(',')] if keywords else []
-        self.locations = [loc.strip().lower() for loc in locations.split(',')] if locations else []
-        self.gender = gender.lower() if gender else ''
+        self.sources = [s.strip().lower() for s in sources.split(",") if s.strip()]
+        self.target = target.strip()
+        self.keywords = [k.strip().lower() for k in keywords.split(",") if k.strip()]
+        self.locations = [loc.strip().lower() for loc in locations.split(",") if loc.strip()]
+        self.gender = gender.strip().lower()
 
-        # load dynamic config
         cfg_path = pathlib.Path(__file__).with_name("scraper_config.json")
-        with open(cfg_path, "r", encoding="utf-8") as f:
-            self.cfg = json.load(f)
+        if cfg_path.exists():
+            with open(cfg_path, encoding="utf-8") as f:
+                self.cfg = json.load(f)
+        else:
+            self.cfg = {}
 
         self.start_urls = []
         for src in self.sources:
             if src in self.cfg:
                 self.start_urls.append(self.cfg[src]["url"].format(target=self.target))
 
+    # ------------------------------------------------------------------
     def start_requests(self):
+        headers = {"User-Agent": self.ua.random}
         for url in self.start_urls:
-            yield Request(url, headers={'User-Agent': self.ua.random}, callback=self.parse, dont_filter=True)
-        # Twitter stays separate
-        if 'twitter' in self.sources:
+            yield Request(url, headers=headers, callback=self.parse, dont_filter=True)
+
+        if "twitter" in self.sources and TWITTER_CREDS["bearer"]:
             query = f"{self.target} {' '.join(self.keywords)} {' '.join(self.locations)}"
-            twitter_url = f"https://api.twitter.com/2/tweets/search/recent?query={query}&max_results=100"
-            yield Request(twitter_url, headers=self.twitter_headers, callback=self.parse_twitter, method='GET', dont_filter=True)
-    
+            yield Request(
+                f"https://api.twitter.com/2/tweets/search/recent?query={query}&max_results=100",
+                headers={"Authorization": f"Bearer {TWITTER_CREDS['bearer']}"},
+                callback=self.parse_twitter,
+                dont_filter=True,
+            )
+
+    # ------------------------------------------------------------------
     def parse(self, response):
-        if self.post_count >= self.MAX_POSTS:
-            return
-        
-        source = 'reddit' if 'reddit' in response.url else 'tiktok' if 'tiktok' in response.url else 'instagram' if 'instagram' in response.url else 'imdb' if 'imdb' in response.url else 'ebay'
-        
-        if source == 'reddit':
-            for post in response.css("div.Post"):
-                text = post.css("h3::text").get(default="").strip().lower()
-                if not self.keywords or any(kw in text for kw in self.keywords):
-                    likes = post.css("div._1rZYMD_4xY3gRcSS3p8ODO::text").get(default="0")
-                    yield {
-                        "text": text,
-                        "likes": int(likes.split()[0]) if likes.isdigit() else 0,
-                        "source": source,
-                        "timestamp": datetime.now().isoformat()
-                    }
-                    self.post_count += 1
-            next_page = response.css("a[rel='nofollow next']::attr(href)").get()
-            if next_page and self.post_count < self.MAX_POSTS:
-                yield response.follow(next_page, self.parse, headers={'User-Agent': self.ua.random})
-        
-        elif source == 'tiktok':
-            for video in response.css("div.tiktok-x6y88p-DivItemContainerV2"):
-                if self.post_count >= self.MAX_POSTS:
-                    break
-                text = video.css("div.tiktok-1qb12g8-DivThreeColumnContainer p::text").get(default="").strip().lower()
-                comments = video.css("div.tiktok-1qb12g8-DivCommentContent p::text").getall()
-                if not self.keywords or any(kw in text for kw in self.keywords):
-                    likes = video.css("strong.tiktok-1p7xrbz-StrongText::text").get(default="0")
-                    comment_text = " | Comments: " + " ".join(comments[:5]) if comments else ""
-                    yield {
-                        "text": text + comment_text,
-                        "likes": int(likes.replace('K', '000').replace('M', '000000')) if likes else 0,
-                        "source": source,
-                        "timestamp": datetime.now().isoformat()
-                    }
-                    self.post_count += 1
-            next_page = response.css("a.tiktok-1p7xrbz-AButton::attr(href)").get()
-            if next_page and self.post_count < self.MAX_POSTS:
-                time.sleep(random.uniform(2, 5))
-                yield response.follow(next_page, self.parse, headers={'User-Agent': self.ua.random})
-        
-        elif source == 'instagram':
-            for post in response.css("article"):
-                if self.post_count >= self.MAX_POSTS:
-                    break
-                text = post.css("div._a9zs span::text").get(default="").strip().lower()
-                if not self.keywords or any(kw in text for kw in self.keywords):
-                    likes = post.css("div.Nm9FK span::text").get(default="0")
-                    yield {
-                        "text": text,
-                        "likes": int(likes.replace(',', '')) if likes.replace(',', '').isdigit() else 0,
-                        "source": source,
-                        "timestamp": datetime.now().isoformat()
-                    }
-                    self.post_count += 1
-        
-        elif source == 'imdb':
-            for movie in response.css("div.lister-item"):
-                if self.post_count >= self.MAX_POSTS:
-                    break
-                title = movie.css("h3 a::text").get(default="").strip().lower()
-                rating = movie.css("div.ratings-bar strong::text").get(default="0")
-                if not self.keywords or any(kw in title for kw in self.keywords):
-                    yield {
-                        "text": title,
-                        "likes": float(rating) if rating.replace('.', '').isdigit() else 0.0,
-                        "source": source,
-                        "timestamp": datetime.now().isoformat()
-                    }
-                    self.post_count += 1
-            next_page = response.css("a.next-page::attr(href)").get()
-            if next_page and self.post_count < self.MAX_POSTS:
-                yield response.follow(next_page, self.parse, headers={'User-Agent': self.ua.random})
-        
-        elif source == 'ebay':
-            for item in response.css("li.s-item"):
-                if self.post_count >= self.MAX_POSTS:
-                    break
-                title = item.css("h3.s-item__title::text").get(default="").strip().lower()
-                price = item.css("span.s-item__price::text").get(default="0").replace("$", "").replace(",", "").strip()
-                if not self.keywords or any(kw in title for kw in self.keywords):
-                    yield {
-                        "text": title,
-                        "likes": float(price) if price.replace('.', '').isdigit() else 0.0,
-                        "source": source,
-                        "timestamp": datetime.now().isoformat()
-                    }
-                    self.post_count += 1
-            next_page = response.css("a.pagination__next::attr(href)").get()
-            if next_page and self.post_count < self.MAX_POSTS:
-                yield response.follow(next_page, self.parse, headers={'User-Agent': self.ua.random})
+        source = "reddit" if "reddit" in response.url else "tiktok" if "tiktok" in response.url else "instagram" if "instagram" in response.url else "ebay" if "ebay" in response.url else "imdb"
+        parser_map = {
+            "reddit": self._parse_reddit,
+            "tiktok": self._parse_tiktok,
+            "instagram": self._parse_instagram,
+            "ebay": self._parse_ebay,
+            "imdb": self._parse_imdb,
+        }
+        yield from parser_map[source](response)
+
+    # ------------------------------------------------------------------
+    def _filter_text(self, text):
+        if not text or len(text.split()) < 3:
+            return None
+        return text
+
+    def _parse_reddit(self, response):
+        for post in response.css("div.Post"):
+            text = post.css("h3::text").get(default="").strip()
+            text = self._filter_text(text)
+            if not text:
+                continue
+            likes = int(post.css("div._1rZYMD_4xY3gRcSS3p8ODO::text").get(default="0").split()[0])
+            yield {"text": text, "likes": likes, "source": "reddit", "timestamp": datetime.utcnow().isoformat()}
+
+        next_page = response.css("a[rel='nofollow next']::attr(href)").get()
+        if next_page:
+            yield response.follow(next_page, self.parse)
+
+    def _parse_tiktok(self, response):
+        for video in response.css("div.tiktok-x6y88p-DivItemContainerV2"):
+            text = video.css("div.tiktok-1qb12g8-DivThreeColumnContainer p::text").get(default="").strip()
+            text = self._filter_text(text)
+            if not text:
+                continue
+            likes_str = video.css("strong.tiktok-1p7xrbz-StrongText::text").get(default="0")
+            likes = int(likes_str.replace("K", "000").replace("M", "000000")) if likes_str else 0
+            yield {"text": text, "likes": likes, "source": "tiktok", "timestamp": datetime.utcnow().isoformat()}
+
+    def _parse_instagram(self, response):
+        for post in response.css("article"):
+            text = post.css("div._a9zs span::text").get(default="").strip()
+            text = self._filter_text(text)
+            if not text:
+                continue
+            likes = int(post.css("div.Nm9FK span::text").get(default="0").replace(",", ""))
+            yield {"text": text, "likes": likes, "source": "instagram", "timestamp": datetime.utcnow().isoformat()}
+
+    def _parse_ebay(self, response):
+        for item in response.css("li.s-item"):
+            text = item.css("h3.s-item__title::text").get(default="").strip()
+            text = self._filter_text(text)
+            if not text:
+                continue
+            price = float(
+                item.css("span.s-item__price::text")
+                .get(default="0")
+                .replace("$", "")
+                .replace(",", "")
+            )
+            yield {"text": text, "likes": int(price), "source": "ebay", "timestamp": datetime.utcnow().isoformat()}
+
+    def _parse_imdb(self, response):
+        for movie in response.css("div.lister-item"):
+            text = movie.css("h3 a::text").get(default="").strip()
+            text = self._filter_text(text)
+            if not text:
+                continue
+            rating = float(movie.css("div.ratings-bar strong::text").get(default="0"))
+            yield {"text": text, "likes": int(rating * 10), "source": "imdb", "timestamp": datetime.utcnow().isoformat()}
 
     def parse_twitter(self, response):
         try:
             data = json.loads(response.text)
-            tweets = data.get('data', [])
-            for tweet in tweets:
-                if self.post_count >= self.MAX_POSTS:
-                    break
-                text = tweet.get('text', '').lower()
-                if not self.keywords or any(kw in text for kw in self.keywords):
-                    yield {
-                        "text": text,
-                        "likes": tweet.get('public_metrics', {}).get('like_count', 0),
-                        "source": "twitter",
-                        "timestamp": datetime.now().isoformat()
-                    }
-                    self.post_count += 1
+            for tweet in data.get("data", []):
+                text = self._filter_text(tweet.get("text", ""))
+                if not text:
+                    continue
+                yield {
+                    "text": text,
+                    "likes": tweet.get("public_metrics", {}).get("like_count", 0),
+                    "source": "twitter",
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
         except json.JSONDecodeError:
-            self.logger.error("Failed to parse Twitter response")
+            logger.error("Invalid Twitter JSON response")
 
+# ------------------------------------------------------------------
+class Retry429Middleware(RetryMiddleware):
+    def _retry(self, request, reason, spider):
+        response = reason.value.response if hasattr(reason, "value") else None
+        if response and response.status == 429:
+            retry_after = int(response.headers.get("Retry-After", 60))
+            spider.logger.info(f"429 received, retrying after {retry_after}s")
+            time.sleep(retry_after)
+        return super().retry(request, reason, spider)
+
+# Append right after the existing Retry429Middleware class in social_media_spider.py
+class AdaptiveBackoffMiddleware:
+    """429/503 aware with exponential back-off and jitter."""
+    def __init__(self, backoff_base=1.0):
+        self.backoff_base = backoff_base
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        return cls(backoff_base=crawler.settings.getfloat("BACKOFF_BASE", 1.0))
+
+    def process_response(self, request, response, spider):
+        if response.status in {429, 503}:
+            retry_after = int(response.headers.get("Retry-After", 60))
+            jitter = random.uniform(0.5, 1.5)
+            delay = retry_after * jitter
+            spider.logger.info("AdaptiveBackoff: sleeping %.1fs", delay)
+            time.sleep(delay)
+            reason = response_status_message(response.status)
+            return self._retry(request, reason, spider) or response
+        return response
+
+    def _retry(self, request, reason, spider):
+        # re-use scrapy’s built-in retry
+        from scrapy.downloadermiddlewares.retry import RetryMiddleware as RM
+        return RM.retry(self, request, reason, spider)
+
+# ---- add to custom_settings ----
+# DOWNLOADER_MIDDLEWARES  += {"__main__.AdaptiveBackoffMiddleware": 560}
+# ------------------------------------------------------------------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Social Media Spider")
-    parser.add_argument("--sources", default="reddit,twitter,tiktok,instagram,imdb,ebay", help="Comma-separated sources")
-    parser.add_argument("--target", required=True, help="Target query (product name)")
-    parser.add_argument("--keywords", default="", help="Comma-separated keywords")
-    parser.add_argument("--locations", default="", help="Comma-separated locations")
-    parser.add_argument("--gender", default="", help="Gender filter")
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--sources", default="reddit,twitter,tiktok,instagram,ebay,imdb")
+    parser.add_argument("--target", required=True)
+    parser.add_argument("--keywords", default="")
+    parser.add_argument("--locations", default="")
+    parser.add_argument("--gender", default="")
     args = parser.parse_args()
-    
+
     process = CrawlerProcess()
-    process.crawl(SocialMediaSpider, sources=args.sources, target=args.target, keywords=args.keywords, locations=args.locations, gender=args.gender)
+    process.crawl(
+        SocialMediaSpider,
+        sources=args.sources,
+        target=args.target,
+        keywords=args.keywords,
+        locations=args.locations,
+        gender=args.gender,
+    )
     process.start()
