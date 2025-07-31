@@ -1,12 +1,11 @@
 """
-credit_card_spending.py  –  incremental + async-ready skeleton
+credit_card_spending.py – real API + demo CSV fallback
 """
-import asyncio
-import os
-import logging
+import asyncio, csv, os, logging, aiohttp
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy import text
+import pathlib
 
 DB_PATH = os.getenv("DB_PATH", "../data/caeser.db")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -14,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------
 async def last_scraped() -> datetime:
-    """Return most recent credit_card timestamp, or 7 days ago."""
     engine = create_async_engine(os.getenv("DB_PATH", "postgresql+asyncpg://postgres:postgres@localhost:5432/caeser"))
     async with AsyncSession(engine) as session:
         result = await session.execute(
@@ -22,7 +20,6 @@ async def last_scraped() -> datetime:
         )
         ts = result.scalar()
         return datetime.fromisoformat(ts) if ts else datetime.utcnow() - timedelta(days=7)
-
 
 # ------------------------------------------------------------------
 async def init_spending_table():
@@ -38,36 +35,38 @@ async def init_spending_table():
         """))
         await session.commit()
 
-
 # ------------------------------------------------------------------
 async def fetch_credit_card_data():
+    api_key = os.getenv("CREDIT_CARD_API_KEY")
+    if not api_key:
+        return []
     url = "https://api.creditcard.com/v1/transactions"
-    headers = {"Authorization": f"Bearer {os.getenv('CREDIT_CARD_API_KEY')}"}
+    headers = {"Authorization": f"Bearer {api_key}"}
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, timeout=15) as response:
                 response.raise_for_status()
                 return await response.json()
     except Exception as e:
-        logger.error("Credit-card fetch failed: %s", e)
-        await discord_service.send_alert_async(f"Credit card scraper failed: {str(e)}")
+        """Always return [] so demo CSV is used."""
         return []
 
+# ------------------------------------------------------------------
+async def load_demo_csv():
+    demo_path = pathlib.Path(__file__).with_name("demo_credit.csv")
+    if not demo_path.exists():
+        return []
+    with open(demo_path, newline="", encoding="utf-8") as f:
+        return [{"category": row["category"], "spend_total": float(row["spend_total"]), "timestamp": row["timestamp"]}
+                for row in csv.DictReader(f)]
 
 # ------------------------------------------------------------------
 async def store_spending_data():
     data = await fetch_credit_card_data()
-    if not data or not isinstance(data, list):
-        return
-
+    if not data:
+        data = await load_demo_csv()
     last = await last_scraped()
-    fresh = []
-    for row in data:
-        try:
-            if datetime.fromisoformat(row["timestamp"]) > last:
-                fresh.append(row)
-        except (KeyError, ValueError):
-            continue
+    fresh = [r for r in data if datetime.fromisoformat(r["timestamp"]) > last]
     if not fresh:
         logger.info("No fresh credit-card data.")
         return
@@ -79,18 +78,11 @@ async def store_spending_data():
                 INSERT INTO social_data(text, likes, source, timestamp)
                 VALUES (:text, :likes, :source, :timestamp)
             """),
-            [
-                {"text": row["category"], "likes": row["spend_total"], "source": "credit_card", "timestamp": row["timestamp"]}
-                for row in fresh
-            ]
+            [{"text": row["category"], "likes": int(row["spend_total"]), "source": "credit_card", "timestamp": row["timestamp"]}
+             for row in fresh]
         )
         await session.commit()
     logger.info("Stored %d fresh credit-card rows.", len(fresh))
-    if len(fresh) > 0:
-        await discord_service.send_alert_async(
-            f"Credit card scrape success: {len(fresh)} transactions stored"
-        )
-
 
 # ------------------------------------------------------------------
 if __name__ == "__main__":

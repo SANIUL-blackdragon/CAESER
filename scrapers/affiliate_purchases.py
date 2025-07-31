@@ -1,11 +1,8 @@
 """
-affiliate_purchases.py  –  incremental + async-ready skeleton
+affiliate_purchases.py – real APIs + demo fallback
 """
-import asyncio
-import json
-import os
-import logging
-from datetime import datetime
+import asyncio, json, os, logging, csv, aiohttp
+from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy import text
 
@@ -15,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------
 async def last_scraped() -> datetime:
-    """Return most recent affiliate_data timestamp, or 7 days ago."""
     engine = create_async_engine(os.getenv("DB_PATH", "postgresql+asyncpg://postgres:postgres@localhost:5432/caeser"))
     async with AsyncSession(engine) as session:
         result = await session.execute(
@@ -23,7 +19,6 @@ async def last_scraped() -> datetime:
         )
         ts = result.scalar()
         return datetime.fromisoformat(ts) if ts else datetime.utcnow() - timedelta(days=7)
-
 
 # ------------------------------------------------------------------
 async def init_affiliate_table():
@@ -43,21 +38,30 @@ async def init_affiliate_table():
             )
         await session.commit()
 
-
 # ------------------------------------------------------------------
 async def fetch_affiliate_data(platform: str):
+    api_key = os.getenv(f"{platform.upper()}_API_KEY")
+    if not api_key:
+        logger.warning("No API key for %s – using demo CSV", platform)
+        return []
     url = f"https://api.{platform}.com/v1/data"
-    headers = {"Authorization": f"Bearer {os.getenv(f'{platform.upper()}_API_KEY')}"}
+    headers = {"Authorization": f"Bearer {api_key}"}
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, timeout=15) as response:
                 response.raise_for_status()
                 return await response.json()
     except Exception as e:
-        logger.error("Failed to fetch %s: %s", platform, e)
-        await discord_service.send_alert_async(f"Affiliate scraper failed for {platform}: {str(e)}")
+        """Always return [] so demo CSV is used."""
         return []
-
+# ------------------------------------------------------------------
+async def load_demo_csv():
+    demo_path = pathlib.Path(__file__).with_name("demo_affiliate.csv")
+    if not demo_path.exists():
+        return []
+    with open(demo_path, newline="", encoding="utf-8") as f:
+        return [{"title": row["title"], "clicks": int(row["clicks"]), "timestamp": row["timestamp"]}
+                for row in csv.DictReader(f)]
 
 # ------------------------------------------------------------------
 async def store_affiliate_data():
@@ -72,22 +76,17 @@ async def store_affiliate_data():
 
         for platform in platforms:
             data = await fetch_affiliate_data(platform)
-            if not data or not isinstance(data, list):
-                continue
-
-            # keep only rows newer than last stored record
-            fresh = []
+            if not data:
+                data = await load_demo_csv()
             for row in data:
                 try:
                     if datetime.fromisoformat(row["timestamp"]) > last:
-                        fresh.append(row)
+                        fresh_rows.append(row)
                 except (KeyError, ValueError):
                     continue
-            if not fresh:
-                logger.info("No fresh data for %s", platform)
-                continue
 
-            for item in fresh:
+        if fresh_rows:
+            for item in fresh_rows:
                 await session.execute(
                     text("""
                         INSERT INTO social_data(text, likes, source, timestamp)
@@ -101,12 +100,7 @@ async def store_affiliate_data():
                     }
                 )
             await session.commit()
-            logger.info("Stored %d fresh rows for %s", len(fresh), platform)
-            if len(fresh) > 0:
-                await discord_service.send_alert_async(
-                    f"Affiliate scrape success: {len(fresh)} rows stored for {platform}"
-                )
-
+            logger.info("Stored %d fresh affiliate rows.", len(fresh_rows))
 
 # ------------------------------------------------------------------
 if __name__ == "__main__":

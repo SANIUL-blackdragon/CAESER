@@ -1,16 +1,15 @@
-# frontend/src/main.py  – v2 + helpers (drop-in)
-import asyncio, os, json, logging
+# frontend/src/main.py – v2 + helpers + validator
+import asyncio, os, json, logging, re
 from datetime import datetime
 import streamlit as st
 import requests, pandas as pd, plotly.express as px, plotly.graph_objects as go
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table
-from dotenv import load_dotenv  # ← make sure this is imported
+from dotenv import load_dotenv
 
 load_dotenv()
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
-
 st.set_page_config(page_title="CÆSER Dashboard v2", layout="wide")
 
 # ---------- THEMING & DARK MODE ----------
@@ -182,6 +181,23 @@ def dq_widget():
     except Exception:
         pass
 
+# ---------- LIGHTWEIGHT VALIDATOR ----------
+def validate_frontend_inputs(pn, desc, tags, loc, age, gender):
+    """Return (ok: bool, error_msg: str)"""
+    if not pn.strip():
+        return False, "Product Name is required."
+    if len(pn) > 120:
+        return False, "Product Name ≤ 120 chars."
+    if not desc.strip():
+        return False, "Description is required."
+    if len(desc) > 1000:
+        return False, "Description ≤ 1000 chars."
+    if tags and not re.match(r'^[\w\s,]+$', tags):
+        return False, "Tags may only contain letters, numbers, spaces & commas."
+    if age and not age.isdigit():
+        return False, "Age must be a number."
+    return True, ""
+
 # ---------- MAIN ----------
 tab1, tab2, tab3 = st.tabs(["Dashboard", "Store Data", "Google Trends"])
 with tab1:
@@ -193,51 +209,55 @@ with tab1:
     age = st.text_input("Age")
     gender = st.selectbox("Gender", ["All", "Male", "Female"])
     itype = st.selectbox("Insight", ["brand", "demographics", "heatmap"])
-    if st.button("Analyze", use_container_width=True) and validate_inputs(pn, desc):
-        with st.spinner("Analyzing…"):
-            res = asyncio.run(
-                async_post(
-                    "/analyze",
-                    {
-                        "product_name": pn,
-                        "description": desc,
-                        "tags": tags,
-                        "locations": loc,
-                        "gender": gender,
-                    },
-                )
-            )
-            hype = res.get("hype_score", 0)
-            with st.spinner("Fetching trend prediction…"):
-                trend = asyncio.run(
+    if st.button("Analyze", use_container_width=True):
+        ok, err = validate_frontend_inputs(pn, desc, tags, loc, age, gender)
+        if not ok:
+            st.error(err)
+        elif validate_inputs(pn, desc):
+            with st.spinner("Analyzing…"):
+                res = asyncio.run(
                     async_post(
-                        "/predict/trend",
-                        {"product_name": pn, "tags": tags},
-                    )
-                )
-            with st.spinner("Fetching insights…"):
-                ins = _get_insights(loc, tags, itype)
-            with st.spinner("Predicting demand…"):
-                pred = asyncio.run(
-                    async_post(
-                        "/predict/demand",
+                        "/analyze",
                         {
-                            "product": {"name": pn, "tags": tags},
-                            "insights": ins,
-                            "hype_score": hype,
+                            "product_name": pn,
+                            "description": desc,
+                            "tags": tags,
+                            "locations": loc,
+                            "gender": gender,
                         },
                     )
                 )
-            df_ins = insight_chart(ins, itype)
-            df_pred = pred_chart(pred, hype, trend)
-            dq_widget()
-            buf, fn, mime = export_report(
-                df_ins,
-                df_pred,
-                st.selectbox("Export", ["CSV", "Excel", "PDF"]),
-            )
-            if buf:
-                st.download_button("Download Report", data=buf, file_name=fn, mime=mime)
+                hype = res.get("hype_score", 0)
+                with st.spinner("Fetching trend prediction…"):
+                    trend = asyncio.run(
+                        async_post(
+                            "/predict/trend",
+                            {"product_name": pn, "tags": tags},
+                        )
+                    )
+                with st.spinner("Fetching insights…"):
+                    ins = _get_insights(loc, tags, itype)
+                with st.spinner("Predicting demand…"):
+                    pred = asyncio.run(
+                        async_post(
+                            "/predict/demand",
+                            {
+                                "product": {"name": pn, "tags": tags},
+                                "insights": ins,
+                                "hype_score": hype,
+                            },
+                        )
+                    )
+                df_ins = insight_chart(ins, itype)
+                df_pred = pred_chart(pred, hype, trend)
+                dq_widget()
+                buf, fn, mime = export_report(
+                    df_ins,
+                    df_pred,
+                    st.selectbox("Export", ["CSV", "Excel", "PDF"]),
+                )
+                if buf:
+                    st.download_button("Download Report", data=buf, file_name=fn, mime=mime)
 
 with tab2:
     st.subheader("Store Data")

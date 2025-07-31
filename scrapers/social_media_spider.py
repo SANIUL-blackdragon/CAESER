@@ -69,15 +69,11 @@ class SocialMediaSpider(scrapy.Spider):
     custom_settings = {
         "ITEM_PIPELINES": {"__main__.SqlitePipeline": 1},
         "DOWNLOADER_MIDDLEWARES": {
-            "__main__.DynamicProxyMiddleware": 350,
             "__main__.Retry429Middleware": 550,
         },
-        "DOWNLOAD_DELAY": 1.5,
-        "RANDOMIZE_DOWNLOAD_DELAY": True,
-        "CONCURRENT_REQUESTS": 32,
-        "AUTOTHROTTLE_ENABLED": True,
-        "AUTOTHROTTLE_TARGET_CONCURRENCY": 8,
-        "RETRY_TIMES": 5,
+        "DOWNLOAD_DELAY": 1.2,
+        "CONCURRENT_REQUESTS": 8,
+        "RETRY_TIMES": 3,
     }
 
     def __init__(

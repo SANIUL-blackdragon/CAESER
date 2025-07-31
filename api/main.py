@@ -1,35 +1,36 @@
-# api/main.py  –  v3 + semaphore (drop-in replacement)
-import os
+# api/main.py  –  v3 + semaphore + AWS Secrets Manager
 import asyncio
 import json
 import logging
+import os
 import time
 from datetime import datetime
 from typing import Dict, List, Optional
 
+import boto3
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException, status, Request, Depends
+from celery import Celery
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
 from sqlalchemy import insert, select, text
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 import redis.asyncio as redis
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
-from celery import Celery
 
 # Import the unchanged service layer
 from .services import (
-    qloo_service,
-    llm_service,
+    data_quality_service,
     discord_service,
     hype_engine,
     integrations_service,
-    data_quality_service,
+    llm_service,
+    qloo_service,
 )
 
 logging.basicConfig(
@@ -38,29 +39,58 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ---------- ENV ----------
-DB_URL = os.getenv("DB_PATH", "postgresql+asyncpg://postgres:postgres@localhost:5432/caeser")
-engine = create_async_engine(DB_URL, pool_pre_ping=True, pool_size=10, max_overflow=20)
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+# ---------- SECRETS ----------
+secrets = boto3.client(
+    "secretsmanager",
+    region_name=os.getenv("AWS_REGION", "us-east-1")
+)
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+def get_secret(name: str, fallback: Optional[str] = None) -> str:
+    try:
+        return json.loads(
+            secrets.get_secret_value(SecretId=name)["SecretString"]
+        )
+    except Exception:
+        return os.getenv(name, fallback)
+
+DB_URL       = get_secret("caeser-db-url")
+REDIS_URL    = get_secret("caeser-redis-url")
+QLOO_API_KEY = get_secret("qloo-api-key")
+OPENROUTER   = get_secret("openrouter-key")
+load_dotenv()
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+# ---------- SERVICES ----------
+
+engine = create_async_engine(
+    DB_URL, pool_pre_ping=True, pool_size=10, max_overflow=20
+)
+AsyncSessionLocal = sessionmaker(
+    engine, class_=AsyncSession, expire_on_commit=False
+)
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
 # ---------- FASTAPI ----------
 app = FastAPI(title="CÆSER API v3")
 
 # ---------- CELERY SETUP ----------
-celery_app = Celery('caeser', broker=os.getenv("REDIS_URL", "redis://localhost:6379/0"))
-celery_app.conf.task_default_queue = 'scraping'
+celery_app = Celery(
+    "caeser",
+    broker=os.getenv("REDIS_URL", "redis://localhost:6379/0")
+)
+celery_app.conf.task_default_queue = "scraping"
 celery_app.conf.task_routes = {
-    'api.main.run_scrapy': {'queue': 'scraping'}
+    "api.main.run_scrapy": {"queue": "scraping"}
 }
 
 # ---------- GLOBAL EXCEPTION HANDLER ----------
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error("Unhandled exception at %s: %s", request.url, exc, exc_info=True)
-    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+    logger.error(
+        "Unhandled exception at %s: %s", request.url, exc, exc_info=True
+    )
+    return JSONResponse(
+        status_code=500, content={"detail": "Internal server error"}
+    )
 
 # ---------- MODELS ----------
 class LogMessageIn(BaseModel):
@@ -139,14 +169,18 @@ async def init_db_indexes() -> None:
         await conn.commit()
 
 # ---------- CACHED QLOO with granular key ----------
-async def cached_qloo(location: str, tags: str, insight_type: str = "brand") -> Dict:
+async def cached_qloo(
+    location: str, tags: str, insight_type: str = "brand"
+) -> Dict:
     tag_list = sorted(tags.split(","))
     key = f"qloo:{insight_type}:{location}:{tag_list}"
     cached = await redis_client.get(key)
     if cached:
         return json.loads(cached)
 
-    result = await qloo_service.get_cultural_insights_async(location, tag_list, insight_type)
+    result = await qloo_service.get_cultural_insights_async(
+        location, tag_list, insight_type
+    )
     await redis_client.setex(key, 3600, json.dumps(result))
     return result
 
@@ -163,25 +197,31 @@ async def predict_trend(product_name: str, tags: str) -> Dict:
                 ORDER BY timestamp
                 """
             )
-            rows = (await session.execute(query, {"tags": tag_list})).fetchall()
+            rows = (
+                await session.execute(query, {"tags": tag_list})
+            ).fetchall()
 
         if len(rows) < 3:
             return {"success": False, "message": "Insufficient trend data"}
 
         df = pd.DataFrame(rows, columns=["likes", "timestamp"])
         df["likes"] = pd.to_numeric(df["likes"], errors="coerce").fillna(0)
-        model = ExponentialSmoothing(df["likes"], trend="add", seasonal=None).fit()
+        model = ExponentialSmoothing(
+            df["likes"], trend="add", seasonal=None
+        ).fit()
         forecast = model.forecast(90)
         peak_idx = int(np.argmax(forecast))
-        peak_date = (pd.Timestamp.utcnow() + pd.Timedelta(days=peak_idx)).strftime(
-            "%Y-%m-%d"
-        )
+        peak_date = (
+            pd.Timestamp.utcnow() + pd.Timedelta(days=peak_idx)
+        ).strftime("%Y-%m-%d")
 
         return {
             "success": True,
             "predicted_peak_days": peak_idx + 1,
             "predicted_peak_date": peak_date,
-            "confidence": max(0.0, 1 - model.sse / (df["likes"] ** 2).sum()),
+            "confidence": max(
+                0.0, 1 - model.sse / (df["likes"] ** 2).sum()
+            ),
         }
 
     except Exception as e:
@@ -198,8 +238,14 @@ async def startup_event():
 
 # ---------- ENDPOINTS ----------
 # ---------- CELERY TASK ----------
-@celery_app.task(name='api.main.run_scrapy')
-async def run_scrapy(product_name: str, sources: str, tags: str, locations: str = None, gender: str = None):
+@celery_app.task(name="api.main.run_scrapy")
+async def run_scrapy(
+    product_name: str,
+    sources: str,
+    tags: str,
+    locations: str = None,
+    gender: str = None,
+):
     cmd = [
         "scrapy",
         "crawl",
@@ -226,7 +272,10 @@ async def run_scrapy(product_name: str, sources: str, tags: str, locations: str 
         raise Exception(f"Scraping failed: {stderr.decode()}")
     return stdout.decode()
 
-@app.post("/analyze", dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+@app.post(
+    "/analyze",
+    dependencies=[Depends(RateLimiter(times=10, seconds=60))]
+)
 async def analyze_endpoint(inp: AnalyzeInput):
     start = time.time()
     try:
@@ -236,7 +285,7 @@ async def analyze_endpoint(inp: AnalyzeInput):
             sources=inp.sources or "reddit,tiktok,instagram,imdb,ebay",
             tags=inp.tags,
             locations=inp.locations,
-            gender=inp.gender
+            gender=inp.gender,
         )
 
         # Continue with other processing while scraping runs in background
@@ -255,12 +304,16 @@ async def analyze_endpoint(inp: AnalyzeInput):
             "hype_score": hype.get("averageScore", 0),
             "trend_prediction": trend if trend.get("success") else None,
             "message": "Analysis completed (scraping queued)",
-            "task_id": task.id
+            "task_id": task.id,
         }
 
     except Exception as e:
         logger.exception("Unhandled error in /analyze")
-        return {"success": False, "message": "Internal server error", "error": str(e)}
+        return {
+            "success": False,
+            "message": "Internal server error",
+            "error": str(e),
+        }
     finally:
         logger.info("/analyze took %.1f ms", (time.time() - start) * 1000)
 
@@ -280,42 +333,65 @@ async def competitors():
         ).fetchall()
     return {r[0]: {"hype": r[1]} for r in rows}
 
-@app.post("/competitors/add", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
+@app.post(
+    "/competitors/add",
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))]
+)
 async def add_competitor(body: CompetitorIn):
     async with AsyncSessionLocal() as session:
-        stmt = insert(text("competitors")).values(name=body.name, hype_score=body.hype_score)
+        stmt = insert(text("competitors")).values(
+            name=body.name, hype_score=body.hype_score
+        )
         stmt = stmt.on_conflict_do_update(
-            index_elements=["name"], set_=dict(hype_score=body.hype_score)
+            index_elements=["name"],
+            set_=dict(hype_score=body.hype_score),
         )
         await session.execute(stmt)
         await session.commit()
-    return {"success": True, "message": f"Competitor {body.name} saved/updated"}
+    return {
+        "success": True,
+        "message": f"Competitor {body.name} saved/updated",
+    }
 
-@app.post("/categories", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
+@app.post(
+    "/categories",
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))]
+)
 async def add_or_update_category(body: CategoryIn):
     async with AsyncSessionLocal() as session:
         stmt = insert(text("categories")).values(
             category_name=body.category_name, keywords=body.keywords
         )
         stmt = stmt.on_conflict_do_update(
-            index_elements=["category_name"], set_=dict(keywords=body.keywords)
+            index_elements=["category_name"],
+            set_=dict(keywords=body.keywords),
         )
         await session.execute(stmt)
         await session.commit()
-    return {"success": True, "message": f"Category '{body.category_name}' saved"}
+    return {
+        "success": True,
+        "message": f"Category '{body.category_name}' saved",
+    }
 
 @app.get("/categories")
 async def list_categories():
     async with AsyncSessionLocal() as session:
         rows = (
             await session.execute(
-                select(text("category_name, keywords")).select_from(text("categories"))
+                select(text("category_name, keywords")).select_from(
+                    text("categories")
+                )
             )
         ).fetchall()
-    return {"success": True, "data": {r[0]: r[1].split(",") for r in rows}}
+    return {
+        "success": True,
+        "data": {r[0]: r[1].split(",") for r in rows},
+    }
 
 @app.get("/insights/{location}")
-async def get_insights(location: str, tags: str, insight_type: str = "brand"):
+async def get_insights(
+    location: str, tags: str, insight_type: str = "brand"
+):
     return await cached_qloo(location, tags, insight_type)
 
 @app.get("/llm_data_quality")
@@ -329,7 +405,9 @@ async def get_data_quality():
 @app.post("/predict/demand")
 async def predict_demand(data: dict) -> dict:
     return await llm_service.get_prediction_async(
-        data.get("product", {}), data.get("insights", {}), data.get("hype_score", 0)
+        data.get("product", {}),
+        data.get("insights", {}),
+        data.get("hype_score", 0),
     )
 
 @app.post("/hype/score")
@@ -369,16 +447,23 @@ async def get_hype_history(location: str, category: str):
                 {"cat": category, "loc": location},
             )
         ).fetchall()
-    return {"success": True, "data": [{"score": r[0], "timestamp": r[1]} for r in rows]}
+    return {
+        "success": True,
+        "data": [{"score": r[0], "timestamp": r[1]} for r in rows],
+    }
 
 @app.post("/submit_outcome")
 async def submit_outcome(data: dict):
     pid = data.get("prediction_id")
     uplift = data.get("actual_uplift")
     if not isinstance(pid, int) or pid <= 0:
-        raise HTTPException(status_code=400, detail="Bad prediction_id")
+        raise HTTPException(
+            status_code=400, detail="Bad prediction_id"
+        )
     if uplift is None or not isinstance(uplift, (int, float)):
-        raise HTTPException(status_code=400, detail="Bad actual_uplift")
+        raise HTTPException(
+            status_code=400, detail="Bad actual_uplift"
+        )
     async with AsyncSessionLocal() as session:
         await session.execute(
             text(
@@ -410,7 +495,9 @@ async def retrain_endpoint():
         ).fetchall()
         if not rows:
             return RetrainOut(
-                success=False, message="Need ≥1 outcome to retrain", new_weights={}
+                success=False,
+                message="Need ≥1 outcome to retrain",
+                new_weights={},
             )
         sentiments = [r[0] for r in rows]
         actuals = [r[1] for r in rows]
@@ -427,7 +514,9 @@ async def retrain_endpoint():
         )
         await session.commit()
     return RetrainOut(
-        success=True, message="Weights updated", new_weights={"sentiment_weight": new_weight}
+        success=True,
+        message="Weights updated",
+        new_weights={"sentiment_weight": new_weight},
     )
 
 @app.get("/health")
