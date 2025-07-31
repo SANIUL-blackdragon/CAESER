@@ -3,13 +3,14 @@ dark_web.py  –  async + proxy + noise filter + indexing hint
 """
 import asyncio
 import aiohttp
-import sqlite3
 import os
 import random
 import logging
 from datetime import datetime
 from typing import List, Tuple
 import spacy
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy import text
 nlp = spacy.load("en_core_web_sm")
 
 DB_PATH = os.getenv("DB_PATH", "../data/caeser.db")
@@ -50,27 +51,30 @@ async def fetch_dark(
 
     except Exception as exc:
         logger.error("Error fetching %s via %s: %s", query, proxy, exc)
+        await discord_service.send_alert_async(f"Dark web scraper failed for {query}: {str(exc)}")
         return []
 
 # ------------------------------------------------------------------
 async def store_dark(posts: List[Tuple[str, int]]) -> None:
     if not posts:
         return
-    conn = sqlite3.connect(DB_PATH)
-    with conn:
+    engine = create_async_engine(os.getenv("DB_PATH", "postgresql+asyncpg://postgres:postgres@localhost:5432/caeser"))
+    async with AsyncSession(engine) as session:
         # Create index if missing (idempotent)
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_social_ts ON social_data(timestamp)"
+        await session.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_social_ts ON social_data(timestamp)")
         )
-        conn.executemany(
-            "INSERT INTO social_data(text, likes, source, timestamp) "
-            "VALUES (?,?,?,?)",
+        await session.execute(
+            text("""
+                INSERT INTO social_data(text, likes, source, timestamp)
+                VALUES (:text, :likes, :source, :timestamp)
+            """),
             [
-                (text, likes, "dark_web", datetime.utcnow().isoformat())
+                {"text": text, "likes": likes, "source": "dark_web", "timestamp": datetime.utcnow().isoformat()}
                 for text, likes in posts
-            ],
+            ]
         )
-    conn.close()
+        await session.commit()
 
 # ------------------------------------------------------------------
 async def main(keywords: List[str]) -> None:
@@ -89,6 +93,10 @@ async def main(keywords: List[str]) -> None:
     flat = [item for sublist in results for item in sublist]
     await store_dark(flat)
     logger.info("Dark-web scrape complete: %d posts stored", len(flat))
+    if len(flat) > 0:
+        await discord_service.send_alert_async(
+            f"Dark web scrape success: {len(flat)} posts stored for {len(keywords)} keywords"
+        )
 
 # ------------------------------------------------------------------
 if __name__ == "__main__":

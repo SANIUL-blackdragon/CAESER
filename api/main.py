@@ -9,14 +9,18 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException, status, Request
+from fastapi import FastAPI, HTTPException, status, Request, Depends
 from fastapi.responses import JSONResponse
+from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import RateLimiter
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
 from sqlalchemy import insert, select, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 import redis.asyncio as redis
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
+from celery import Celery
 
 # Import the unchanged service layer
 from .services import (
@@ -45,8 +49,12 @@ redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 # ---------- FASTAPI ----------
 app = FastAPI(title="CÆSER API v3")
 
-# ---------- CONCURRENCY CONTROL ----------
-scrapy_sem = asyncio.Semaphore(5)  # ≤ 5 concurrent Scrapy processes
+# ---------- CELERY SETUP ----------
+celery_app = Celery('caeser', broker=os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+celery_app.conf.task_default_queue = 'scraping'
+celery_app.conf.task_routes = {
+    'api.main.run_scrapy': {'queue': 'scraping'}
+}
 
 # ---------- GLOBAL EXCEPTION HANDLER ----------
 @app.exception_handler(Exception)
@@ -184,66 +192,77 @@ async def predict_trend(product_name: str, tags: str) -> Dict:
 @app.on_event("startup")
 async def startup_event():
     await init_db_indexes()
+    await FastAPILimiter.init(redis_client)
+    Instrumentator().instrument(app).expose(app)
     logger.info(os.getenv("STARTUP_MESSAGE", "CÆSER API v3 live 🚀"))
 
 # ---------- ENDPOINTS ----------
-@app.post("/analyze")
+# ---------- CELERY TASK ----------
+@celery_app.task(name='api.main.run_scrapy')
+async def run_scrapy(product_name: str, sources: str, tags: str, locations: str = None, gender: str = None):
+    cmd = [
+        "scrapy",
+        "crawl",
+        "social_media",
+        "-a",
+        f"target={product_name}",
+        "-a",
+        f"sources={sources}",
+        "-a",
+        f"keywords={tags}",
+    ]
+    if locations:
+        cmd.extend(["-a", f"locations={locations}"])
+    if gender:
+        cmd.extend(["-a", f"gender={gender}"])
+
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        raise Exception(f"Scraping failed: {stderr.decode()}")
+    return stdout.decode()
+
+@app.post("/analyze", dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def analyze_endpoint(inp: AnalyzeInput):
     start = time.time()
-    async with scrapy_sem:  # 👈 CONCURRENCY LIMIT
-        try:
-            sources = inp.sources or "reddit,tiktok,instagram,imdb,ebay"
-            cmd = [
-                "scrapy",
-                "crawl",
-                "social_media",
-                "-a",
-                f"target={inp.product_name}",
-                "-a",
-                f"sources={sources}",
-                "-a",
-                f"keywords={inp.tags}",
-            ]
-            if inp.locations:
-                cmd.extend(["-a", f"locations={inp.locations}"])
-            if inp.gender:
-                cmd.extend(["-a", f"gender={inp.gender}"])
+    try:
+        # Queue the scraping task
+        task = run_scrapy.delay(
+            product_name=inp.product_name,
+            sources=inp.sources or "reddit,tiktok,instagram,imdb,ebay",
+            tags=inp.tags,
+            locations=inp.locations,
+            gender=inp.gender
+        )
 
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, stderr = await proc.communicate()
-            if proc.returncode != 0:
-                logger.error("Scraping failed: %s", stderr.decode())
-                return {
-                    "success": False,
-                    "message": f"Scraping error: {stderr.decode()}",
-                }
+        # Continue with other processing while scraping runs in background
+        hype = await hype_engine.calculate_hype_score_async(
+            {},
+            inp.tags,
+            inp.target_area or "global",
+            20.0,
+            inp.product_name,
+        )
 
-            hype = await hype_engine.calculate_hype_score_async(
-                {},
-                inp.tags,
-                inp.target_area or "global",
-                20.0,
-                inp.product_name,
-            )
+        trend = await predict_trend(inp.product_name, inp.tags)
 
-            trend = await predict_trend(inp.product_name, inp.tags)
+        return {
+            "success": True,
+            "hype_score": hype.get("averageScore", 0),
+            "trend_prediction": trend if trend.get("success") else None,
+            "message": "Analysis completed (scraping queued)",
+            "task_id": task.id
+        }
 
-            return {
-                "success": True,
-                "hype_score": hype.get("averageScore", 0),
-                "trend_prediction": trend if trend.get("success") else None,
-                "message": "Analysis completed",
-            }
-
-        except Exception as e:
-            logger.exception("Unhandled error in /analyze")
-            return {"success": False, "message": "Internal server error", "error": str(e)}
-        finally:
-            logger.info("/analyze took %.1f ms", (time.time() - start) * 1000)
+    except Exception as e:
+        logger.exception("Unhandled error in /analyze")
+        return {"success": False, "message": "Internal server error", "error": str(e)}
+    finally:
+        logger.info("/analyze took %.1f ms", (time.time() - start) * 1000)
 
 # ---------- Legacy endpoints ----------
 @app.post("/admin/log_message")
@@ -261,7 +280,7 @@ async def competitors():
         ).fetchall()
     return {r[0]: {"hype": r[1]} for r in rows}
 
-@app.post("/competitors/add")
+@app.post("/competitors/add", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
 async def add_competitor(body: CompetitorIn):
     async with AsyncSessionLocal() as session:
         stmt = insert(text("competitors")).values(name=body.name, hype_score=body.hype_score)
@@ -272,7 +291,7 @@ async def add_competitor(body: CompetitorIn):
         await session.commit()
     return {"success": True, "message": f"Competitor {body.name} saved/updated"}
 
-@app.post("/categories")
+@app.post("/categories", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
 async def add_or_update_category(body: CategoryIn):
     async with AsyncSessionLocal() as session:
         stmt = insert(text("categories")).values(

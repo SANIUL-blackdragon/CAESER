@@ -29,7 +29,7 @@ def upgrade() -> None:
     # 2. NEW: index on text column for faster text filtering
     op.create_index("idx_social_data_text", "social_data", ["text"])
 
-    # 3. Partition social_data by year (2025 only – extend for other years later)
+    # 3. Partition social_data by year (2025 and 2026)
     op.execute("""
         ALTER TABLE social_data
         PARTITION BY RANGE (timestamp);
@@ -38,6 +38,11 @@ def upgrade() -> None:
         CREATE TABLE IF NOT EXISTS social_data_2025
         PARTITION OF social_data
         FOR VALUES FROM ('2025-01-01') TO ('2026-01-01');
+    """)
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS social_data_2026
+        PARTITION OF social_data
+        FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');
     """)
 
     # 4. Complex view
@@ -67,8 +72,10 @@ def downgrade() -> None:
     op.execute("DROP VIEW IF EXISTS avg_hype_per_category")
 
     # 3. Reverse partitioning
+    op.execute("DROP TABLE IF EXISTS social_data_2026")
     op.execute("DROP TABLE IF EXISTS social_data_2025")
     op.execute("ALTER TABLE social_data DETACH PARTITION social_data_2025")
+    op.execute("ALTER TABLE social_data DETACH PARTITION social_data_2026")
     op.execute("ALTER TABLE social_data SET NOT PARTITIONED;")
 
     # 2. NEW: drop text index

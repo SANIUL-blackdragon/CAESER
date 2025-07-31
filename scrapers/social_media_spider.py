@@ -1,4 +1,6 @@
-import scrapy, asyncio, aiohttp, sqlite3, json, os, random, time, logging, pathlib
+import scrapy, asyncio, aiohttp, json, os, random, time, logging, pathlib
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy import text
 from datetime import datetime
 from scrapy.crawler import CrawlerProcess
 from scrapy.http import Request
@@ -17,28 +19,38 @@ logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------
 class SqlitePipeline:
-    def open_spider(self, spider):
-        self.conn = sqlite3.connect(DB_PATH)
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS social_data(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                text TEXT,
-                likes INTEGER,
-                source TEXT,
-                timestamp TEXT
+    async def open_spider(self, spider):
+        self.engine = create_async_engine(os.getenv("DB_PATH", "postgresql+asyncpg://postgres:postgres@localhost:5432/caeser"))
+        async with AsyncSession(self.engine) as session:
+            await session.execute(text("""
+                CREATE TABLE IF NOT EXISTS social_data(
+                    id SERIAL PRIMARY KEY,
+                    text TEXT,
+                    likes INTEGER,
+                    source TEXT,
+                    timestamp TEXT
+                )
+            """))
+            await session.commit()
+
+    async def close_spider(self, spider):
+        await self.engine.dispose()
+
+    async def process_item(self, item, spider):
+        async with AsyncSession(self.engine) as session:
+            await session.execute(
+                text("""
+                    INSERT INTO social_data(text, likes, source, timestamp)
+                    VALUES (:text, :likes, :source, :timestamp)
+                """),
+                {
+                    "text": item["text"],
+                    "likes": item["likes"],
+                    "source": item["source"],
+                    "timestamp": item["timestamp"]
+                }
             )
-        """)
-        self.conn.commit()
-
-    def close_spider(self, spider):
-        self.conn.close()
-
-    def process_item(self, item, spider):
-        self.conn.execute(
-            "INSERT INTO social_data(text, likes, source, timestamp) VALUES (?,?,?,?)",
-            (item["text"], item["likes"], item["source"], item["timestamp"])
-        )
-        self.conn.commit()
+            await session.commit()
         return item
 
 # ------------------------------------------------------------------

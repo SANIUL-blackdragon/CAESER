@@ -3,12 +3,13 @@ google_trends.py  –  async, incremental, drop-in replacement
 """
 import asyncio
 import aiohttp
-import sqlite3
 import os
 import json
 import logging
 from datetime import datetime, timedelta
 from typing import List, Tuple
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy import text
 
 DB_PATH = os.getenv("DB_PATH", "../data/caeser.db")
 logging.basicConfig(
@@ -56,49 +57,53 @@ async def fetch_trend(
         return keyword, 0, False
     except Exception as e:
         logger.error("Unexpected error fetching %s: %s", keyword, e)
+        await discord_service.send_alert_async(f"Google Trends scraper failed for {keyword}: {str(e)}")
         return keyword, 0, False
 
 
 # ------------------------------------------------------------------
-def last_scraped() -> datetime:
+async def last_scraped() -> datetime:
     """Return the most recent google_trends timestamp in DB."""
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.execute(
-        "SELECT MAX(timestamp) FROM social_data WHERE source='google_trends'"
-    )
-    ts = cur.fetchone()[0]
-    conn.close()
-    return datetime.fromisoformat(ts) if ts else datetime.utcnow() - timedelta(days=7)
+    engine = create_async_engine(os.getenv("DB_PATH", "postgresql+asyncpg://postgres:postgres@localhost:5432/caeser"))
+    async with AsyncSession(engine) as session:
+        result = await session.execute(
+            text("SELECT MAX(timestamp) FROM social_data WHERE source='google_trends'")
+        )
+        ts = result.scalar()
+        return datetime.fromisoformat(ts) if ts else datetime.utcnow() - timedelta(days=7)
 
 
 # ------------------------------------------------------------------
-def needs_refresh(keyword: str, since: datetime) -> bool:
+async def needs_refresh(keyword: str, since: datetime) -> bool:
     """Return True if we have no entry or the last entry is older than 12 h."""
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.execute(
-        "SELECT MAX(timestamp) FROM social_data WHERE source='google_trends' AND text=?",
-        (keyword,),
-    )
-    ts = cur.fetchone()[0]
-    conn.close()
-    if not ts:
-        return True
-    return datetime.fromisoformat(ts) < datetime.utcnow() - timedelta(hours=12)
+    engine = create_async_engine(os.getenv("DB_PATH", "postgresql+asyncpg://postgres:postgres@localhost:5432/caeser"))
+    async with AsyncSession(engine) as session:
+        result = await session.execute(
+            text("SELECT MAX(timestamp) FROM social_data WHERE source='google_trends' AND text=:keyword"),
+            {"keyword": keyword}
+        )
+        ts = result.scalar()
+        if not ts:
+            return True
+        return datetime.fromisoformat(ts) < datetime.utcnow() - timedelta(hours=12)
 
 
 # ------------------------------------------------------------------
 async def store_trends(rows: List[Tuple[str, int]]) -> None:
     """Bulk insert new rows."""
-    conn = sqlite3.connect(DB_PATH)
-    with conn:
-        conn.executemany(
-            "INSERT INTO social_data(text, likes, source, timestamp) VALUES (?,?,?,?)",
+    engine = create_async_engine(os.getenv("DB_PATH", "postgresql+asyncpg://postgres:postgres@localhost:5432/caeser"))
+    async with AsyncSession(engine) as session:
+        await session.execute(
+            text("""
+                INSERT INTO social_data(text, likes, source, timestamp)
+                VALUES (:text, :likes, :source, :timestamp)
+            """),
             [
-                (kw, interest, "google_trends", datetime.utcnow().isoformat())
+                {"text": kw, "likes": interest, "source": "google_trends", "timestamp": datetime.utcnow().isoformat()}
                 for kw, interest in rows
-            ],
+            ]
         )
-    conn.close()
+        await session.commit()
 
 
 # ------------------------------------------------------------------
@@ -109,8 +114,8 @@ async def main(keywords: List[str]) -> None:
         logger.info("No keywords supplied.")
         return
 
-    since = last_scraped()
-    to_fetch = [kw for kw in keywords if needs_refresh(kw, since)]
+    since = await last_scraped()
+    to_fetch = [kw for kw in keywords if await needs_refresh(kw, since)]
     if not to_fetch:
         logger.info("All keywords are fresh (< 12 h). Nothing to fetch.")
         return
@@ -139,6 +144,10 @@ async def main(keywords: List[str]) -> None:
     if new_rows:
         await store_trends(new_rows)
         logger.info("Stored %d new trend scores.", len(new_rows))
+        if new_rows:
+            await discord_service.send_alert_async(
+                f"Google Trends scrape success: {len(new_rows)} scores stored"
+            )
     else:
         logger.info("No new data returned.")
 

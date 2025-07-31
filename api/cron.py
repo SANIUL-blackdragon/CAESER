@@ -1,10 +1,13 @@
-import asyncio, requests, sqlite3
+import asyncio
+import requests
 from datetime import datetime, timedelta
 import sys
 import logging
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
+from typing import Optional
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -27,29 +30,39 @@ async def health_check_loop():
 
         try:
             # Log the health check result in the database
-            conn = sqlite3.connect("./data/caeser.db")
-            conn.execute("INSERT INTO error_logs(endpoint, error_msg, timestamp) VALUES (?,?,?)",
-                         ("/health", "UP" if ok else "DOWN", datetime.utcnow().isoformat()))
-            conn.commit()
-            conn.close()
-        except sqlite3.Error as e:
-            # Log the database error
-            logger.error(f"Failed to log health check result in the database: {str(e)}")
+            db_url = os.getenv("DB_PATH", "postgresql+asyncpg://postgres:postgres@localhost:5432/caeser")
+            engine = create_async_engine(db_url, echo=False)
+            async with AsyncSession(engine) as session:
+                try:
+                    await session.execute(
+                        text("INSERT INTO error_logs(endpoint, error_msg, timestamp) VALUES (:endpoint, :msg, :ts)"),
+                        {"endpoint": "/health", "msg": "UP" if ok else "DOWN", "ts": datetime.utcnow().isoformat()}
+                    )
+                    await session.commit()
+                except Exception as e:
+                    logger.error(f"Failed to log health check result in the database: {str(e)}")
+                    await session.rollback()
 
         try:
             # Check for prediction drift and send Discord suggestion if necessary
-            conn = sqlite3.connect("./data/caeser.db")
-            cur = conn.execute("SELECT COUNT(*) FROM predictions WHERE predicted_uplift > 90")
-            if cur.fetchone()[0] > 5:
+            db_url = os.getenv("DB_PATH", "postgresql+asyncpg://postgres:postgres@localhost:5432/caeser")
+            engine = create_async_engine(db_url, echo=False)
+            async with AsyncSession(engine) as session:
                 try:
-                    requests.post("https://discord.com/api/webhooks/...", json={
-                        "content": "🤖 Consider adding Google Trends to reduce high-score drift."
-                    })
-                except requests.RequestException as e:
-                    logger.error(f"Failed to send Discord alert: {str(e)}")
-            conn.close()
-        except sqlite3.Error as e:
-            logger.error(f"Failed to check prediction drift: {str(e)}")
+                    result = await session.execute(
+                        text("SELECT COUNT(*) FROM predictions WHERE predicted_uplift > 90")
+                    )
+                    count = result.scalar() or 0
+                    if count > 5:
+                        try:
+                            requests.post("https://discord.com/api/webhooks/...", json={
+                                "content": "🤖 Consider adding Google Trends to reduce high-score drift."
+                            })
+                        except requests.RequestException as e:
+                            logger.error(f"Failed to send Discord alert: {str(e)}")
+                except Exception as e:
+                    logger.error(f"Failed to check prediction drift: {str(e)}")
+                    await session.rollback()
 
         # Sleep for 5 minutes before the next health check
         await asyncio.sleep(300)

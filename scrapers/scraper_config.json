@@ -28,5 +28,18 @@
     "post_selector": "li.s-item",
     "text_selector": "h3.s-item__title::text",
     "likes_selector": "span.s-item__price::text"
+  },
+  "affiliate": {
+    "platforms": ["instagram", "facebook", "twitter"],
+    "api_endpoint": "https://api.{platform}.com/v1/data",
+    "timestamp_field": "timestamp",
+    "text_field": "title",
+    "likes_field": "clicks"
+  },
+  "credit_card": {
+    "api_endpoint": "https://api.creditcard.com/v1/transactions",
+    "timestamp_field": "timestamp",
+    "text_field": "category",
+    "likes_field": "spend_total"
   }
 }

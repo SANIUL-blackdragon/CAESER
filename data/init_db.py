@@ -135,7 +135,12 @@ def create_post_migration_objects():
             FROM predictions
             GROUP BY category;
         """))
-    logger.info("Post-migration objects created.")
+
+        # Validate constraints after ensuring data is clean
+        conn.execute(sa.text("""
+            ALTER TABLE competitors VALIDATE CONSTRAINT hype_range;
+        """))
+    logger.info("Post-migration objects created and constraints validated.")
 
 
 # ------------------------------------------------------------------
