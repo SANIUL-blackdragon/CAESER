@@ -32,7 +32,7 @@ openpyxl==3.1.2               # Excel export in Streamlit
 reportlab==3.6.12             # PDF report generation
 
 # ---------- NLP ----------
-spacy==3.5.0                  # Industrial-strength NLP (tokenisation, NER)
+spacy>=3.7.0,<4.0.0           # Industrial-strength NLP (tokenisation, NER)
 # en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0-py3-none-any.whl  # Default English pipeline
 
 # ---------- External trends ----------
@@ -49,7 +49,7 @@ prometheus-fastapi-instrumentator==6.0.0  # /metrics endpoint for FastAPI
 fastapi-limiter==0.1.5        # Redis-backed per-IP & per-route limits
 
 # ---------- Validation / Pydantic ----------
-pydantic==1.10.7              # Request/response schema validation
+pydantic>=2.7.4,<3.0.0              # Request/response schema validation
 
 # ---------- Environment / Config ----------
 python-dotenv==0.21.0         # Runtime .env loading

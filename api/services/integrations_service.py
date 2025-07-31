@@ -203,3 +203,11 @@ def send_integrations(prediction, hype_data):
     successes = [r["success"] for r in results]
     messages = [r["message"] for r in results]
     return {"success": any(successes), "message": "; ".join(messages)}
+
+# ------------------------------------------------------------------
+# NEW ASYNC WRAPPER
+# ------------------------------------------------------------------
+import asyncio
+async def send_integrations_async(prediction, hype_data):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, send_integrations, prediction, hype_data)

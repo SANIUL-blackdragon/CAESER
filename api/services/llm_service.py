@@ -152,3 +152,9 @@ def get_llm_data_quality() -> Dict:
         "data": metrics,
         "message": "LLM data quality metrics retrieved",
     }
+
+# ------------------------------------------------------------------
+# NEW ASYNC WRAPPER
+# ------------------------------------------------------------------
+async def get_llm_data_quality_async():
+    return get_llm_data_quality()

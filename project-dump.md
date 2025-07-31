@@ -1,5 +1,5 @@
 ﻿# Project Dump: D:\LAPTOP\TO_EARN\AI\CAESER
-Generated: 2025-07-31 19:16:12
+Generated: 2025-08-01 00:55:32
 Max File Size: 10MB
 
 ---
@@ -1090,7 +1090,7 @@ import sys
 import logging
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy import text
 from typing import Optional
 
@@ -1198,7 +1198,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
 from sqlalchemy import insert, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 import redis.asyncio as redis
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
@@ -4630,4 +4630,4 @@ if __name__ == "__main__":
 ---
 ## Summary
 Total files processed: 39
-Completed: 2025-07-31 19:16:43
+Completed: 2025-08-01 00:56:07

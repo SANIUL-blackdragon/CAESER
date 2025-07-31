@@ -5,7 +5,7 @@ import logging
 import os
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import boto3
 import numpy as np
@@ -45,22 +45,25 @@ secrets = boto3.client(
     region_name=os.getenv("AWS_REGION", "us-east-1")
 )
 
-def get_secret(name: str, fallback: Optional[str] = None) -> str:
+def get_secret(name: str, fallback: Optional[str] = None) -> str: #type: ignore
+    """Always return a string (never dict or None)."""
     try:
-        return json.loads(
-            secrets.get_secret_value(SecretId=name)["SecretString"]
-        )
+        val = json.loads(secrets.get_secret_value(SecretId=name)["SecretString"])
+        if isinstance(val, dict):
+            # if the secret itself is a JSON blob, stringify it
+            return json.dumps(val)
+        return str(val)
     except Exception:
-        return os.getenv(name, fallback)
+        return str(os.getenv(name, fallback or ""))
 
 DB_URL       = get_secret("caeser-db-url")
 REDIS_URL    = get_secret("caeser-redis-url")
 QLOO_API_KEY = get_secret("qloo-api-key")
 OPENROUTER   = get_secret("openrouter-key")
-load_dotenv()
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
-# ---------- SERVICES ----------
 
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+
+# ---------- SERVICES ----------
 engine = create_async_engine(
     DB_URL, pool_pre_ping=True, pool_size=10, max_overflow=20
 )
@@ -243,8 +246,8 @@ async def run_scrapy(
     product_name: str,
     sources: str,
     tags: str,
-    locations: str = None,
-    gender: str = None,
+    locations: str = None, #type: ignore
+    gender: str = None, #type: ignore
 ):
     cmd = [
         "scrapy",

@@ -169,3 +169,11 @@ def send_alert(prediction, hype_data):
     successes = [bool(discord_alerts), bool(slack_alerts), bool(email_alerts)]
     return {"success": any(successes),
             "message": "Alerts batched and flushed"}
+
+# ------------------------------------------------------------------
+# NEW ASYNC WRAPPER
+# ------------------------------------------------------------------
+import asyncio
+async def send_alert_async(prediction, hype_data):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, send_alert, prediction, hype_data)

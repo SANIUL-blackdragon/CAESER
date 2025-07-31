@@ -208,3 +208,13 @@ def get_historical_noise(category: str, location: str, product_name: str = None)
     # Placeholder implementation
     # In a real scenario, this function would fetch historical data and compute the noise
     return 0.0  # Replace with actual historical noise calculation
+
+# ------------------------------------------------------------------
+# NEW ASYNC WRAPPER
+# ------------------------------------------------------------------
+import asyncio
+async def calculate_hype_score_async(insights, category, location, threshold=20.0, product_name=None):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        None, calculate_hype_score, insights, category, location, threshold, product_name
+    )

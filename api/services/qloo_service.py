@@ -167,7 +167,7 @@ async def _init_connections() -> None:
     try:
         pg_pool = await asyncpg.create_pool(POSTGRES_URL, min_size=1, max_size=10)
         # ensure table exists
-        async with pg_pool.acquire() as conn:
+        async with pg_pool.acquire() as conn: #type: ignore
             await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS qloo_cache (
@@ -251,3 +251,9 @@ async def get_cultural_insights(
 # call _init_connections() there instead.
 if __name__ != "__main__":
     asyncio.create_task(_init_connections())
+
+# ------------------------------------------------------------------
+# NEW ASYNC WRAPPER
+# ------------------------------------------------------------------
+async def get_cultural_insights_async(location, tags, insight_type="brand"):
+    return await get_cultural_insights(location, tags, insight_type)

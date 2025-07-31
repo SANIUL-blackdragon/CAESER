@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 async def health_check_loop():
     while True:
+        ok = False
         try:
             # Perform the health check
             r = requests.get("http://localhost:8000/health", timeout=5)
@@ -42,6 +43,10 @@ async def health_check_loop():
                 except Exception as e:
                     logger.error(f"Failed to log health check result in the database: {str(e)}")
                     await session.rollback()
+        except Exception as e:
+            # NEW: guard around db_url / engine creation
+            logger.error(f"Could not build DB URL or engine: {str(e)}")
+            # Continue loop; no return here so the cron keeps running
 
         try:
             # Check for prediction drift and send Discord suggestion if necessary
@@ -63,10 +68,14 @@ async def health_check_loop():
                 except Exception as e:
                     logger.error(f"Failed to check prediction drift: {str(e)}")
                     await session.rollback()
+        except Exception as e:
+            # NEW: guard around db_url / engine creation
+            logger.error(f"Could not build DB URL or engine: {str(e)}")
+            # Continue loop; no return here so the cron keeps running
 
         # Sleep for 5 minutes before the next health check
         await asyncio.sleep(300)
-        
+
 webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
 if webhook_url:
     try:

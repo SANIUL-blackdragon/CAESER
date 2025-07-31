@@ -50,3 +50,11 @@ def check_data_quality():
         "data": metrics,
         "message": "Data quality metrics retrieved"
     }
+
+# ------------------------------------------------------------------
+# NEW ASYNC WRAPPER
+# ------------------------------------------------------------------
+import asyncio
+async def check_data_quality_async():
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, check_data_quality)
