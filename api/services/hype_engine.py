@@ -3,38 +3,46 @@ from typing import Dict
 import logging
 import re
 from collections import defaultdict
+import sqlite3
+import os
+from textblob import TextBlob
+from datetime import datetime, timedelta
+import asyncio
+
 # Enhanced emoji mapping with fallback
 EMOJI_MAP = defaultdict(lambda: 0.0, {
     "😊": 0.8, "😢": -0.8, "😍": 0.9, "😠": -0.9, "😐": 0.0,
     "👍": 0.7, "👎": -0.7, "🔥": 0.85, "💯": 0.9, "👀": 0.3
 })
 EMAIL_REGEX = re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b')
-import sqlite3
-import os
-from textblob import TextBlob
-from datetime import datetime, timedelta
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
 
-# Load category keywords from database or fallback to hard-coded map
-category_keywords = get_categories()
- 
 def get_categories() -> dict:
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.execute("SELECT category_name, keywords FROM categories")
-    rows = cur.fetchall()
-    conn.close()
-    # Fallback to hard-coded map if table empty
-    if not rows:
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.execute("SELECT category_name, keywords FROM categories")
+        rows = cur.fetchall()
+        conn.close()
+        if not rows:
+            return {
+                "sneakers": ["sneakers", "shoes", "footwear", "kicks"],
+                "electronics": ["electronics", "gadgets", "tech", "devices"],
+                "fashion": ["fashion", "clothing", "apparel", "style"]
+            }
+        return {row[0]: [kw.strip() for kw in row[1].split(",")] for row in rows}
+    except sqlite3.Error as e:
+        logger.error(f"Database error while fetching categories: {e}")
         return {
             "sneakers": ["sneakers", "shoes", "footwear", "kicks"],
             "electronics": ["electronics", "gadgets", "tech", "devices"],
             "fashion": ["fashion", "clothing", "apparel", "style"]
         }
-    return {row[0]: [kw.strip() for kw in row[1].split(",")] for row in rows}
+
+category_keywords = get_categories()
 
 # Cultural keywords for bonus scoring
 CULTURAL_KEYWORDS = ["hype", "trend", "viral", "drop", "exclusive", "limited", "collab"]
@@ -53,44 +61,44 @@ def validate_insights(insights: Dict) -> None:
         logger.error("Insights data must be a dictionary")
         raise ValueError("Insights data must be a dictionary")
 
-def save_hype_score(score: float, category: str, location: str, sentiment: float, product_name: str = None) -> None:
+def save_hype_score(score: float, category: str, location: str, sentiment: float, product_name: str | None = None) -> None:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO hype_scores (score, category, location, sentiment, product_name, created_at)
         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    """, (score, category, location, sentiment, product_name))
+    """, (score, category or "", location or "", sentiment, product_name or ""))
     conn.commit()
     conn.close()
 
-def get_previous_hype_score(category: str, location: str, product_name: str = None) -> tuple:
+def get_previous_hype_score(category: str, location: str, product_name: str | None = None) -> tuple:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     query = """
         SELECT score, sentiment FROM hype_scores 
         WHERE category = ? AND location = ?
     """
-    params = [category, location]
+    params = [category or "", location or ""]
     if product_name:
         query += " AND product_name = ?"
-        params.append(product_name)
+        params.append(product_name or "")
     query += " ORDER BY created_at DESC LIMIT 1 OFFSET 1"
     cursor.execute(query, params)
     result = cursor.fetchone()
     conn.close()
     return result if result else (None, None)
 
-def get_hourly_sentiment_change(category: str, location: str, product_name: str = None) -> float:
+def get_hourly_sentiment_change(category: str, location: str, product_name: str | None = None) -> float:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     query = """
         SELECT sentiment, created_at FROM hype_scores 
         WHERE category = ? AND location = ? AND created_at > ?
     """
-    params = [category, location, (datetime.now() - timedelta(hours=1)).isoformat()]
+    params = [category or "", location or "", (datetime.now() - timedelta(hours=1)).isoformat()]
     if product_name:
         query += " AND product_name = ?"
-        params.append(product_name)
+        params.append(product_name or "")
     cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()
@@ -100,7 +108,7 @@ def get_hourly_sentiment_change(category: str, location: str, product_name: str 
     return ((latest_sentiment - prev_sentiment) / prev_sentiment * 100) if prev_sentiment != 0 else 0.0
 
 def get_social_data(category: str, days: int = 7) -> list:
-    keywords = category_keywords.get(category.lower(), [category])
+    keywords = category_keywords.get(category.lower() if category else "", [category or ""])
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     query = f"""
@@ -119,9 +127,9 @@ def emoji_to_sentiment(text: str) -> float:
     return sum(scores) / (len(scores) or 1)
 
 def scrub_pii(text: str) -> str:
-    return EMAIL_REGEX.sub('', text)
+    return EMAIL_REGEX.sub('', text or "")
 
-def calculate_hype_score(insights: Dict, category: str, location: str, threshold: float = 20.0, product_name: str = None) -> Dict:
+def calculate_hype_score(insights: Dict, category: str, location: str, threshold: float = 20.0, product_name: str | None = None) -> Dict:
     validate_insights(insights)
     
     try:
@@ -130,16 +138,13 @@ def calculate_hype_score(insights: Dict, category: str, location: str, threshold
         trend_factor = insights["data"].get("trend", 1.0)
         base_score = popularity * 100 * trend_factor
         
-        # Use real data or a sophisticated model instead of random noise
-        # For example, we can use historical data to simulate the noise
-        # Here, we assume we have a function `get_historical_noise` that returns noise based on historical data
         historical_noise = get_historical_noise(category, location, product_name)
         hype_score = max(0.0, min(100.0, base_score + historical_noise))
         
         social_texts = get_social_data(category)
         if social_texts:
             sentiment_score = sum(
-                TextBlob(scrub_pii(text)).sentiment.polarity + emoji_to_sentiment(text)
+                TextBlob(scrub_pii(text)).sentiment.polarity + emoji_to_sentiment(text) # type: ignore
                 for text in social_texts
             ) / len(social_texts) if social_texts else 0.0
             logger.info(f"Analyzed {len(social_texts)} social posts for sentiment")
@@ -147,15 +152,12 @@ def calculate_hype_score(insights: Dict, category: str, location: str, threshold
             sentiment_score = 0.0
             logger.warning("No social data found for sentiment analysis")
         
-        # Apply sentiment adjustment
         hype_score = min(100.0, hype_score * (1 + sentiment_score * 0.2))
         
-        # Enhanced scoring components
         cultural_bonus = sum(1 for k in CULTURAL_KEYWORDS if k in " ".join(social_texts).lower()) * 2
         psychographic = PSYCHO_VEC["enthusiasm"](sentiment_score)
         hype_score = min(100.0, hype_score + cultural_bonus + psychographic)
         
-        # Calculate additional metrics
         scenario = {"price_drop": min(100.0, hype_score * 1.05)}
         cycle_phase = "growth" if hype_score > 50 else "decline"
         confidence_weight = min(1.0, (entities[0]["properties"].get("confidence", 0.5) if entities else 0.5) * 0.8 + 0.2)
@@ -205,16 +207,10 @@ def get_historical_noise(category: str, location: str, product_name: str = None)
     This function should be implemented to fetch real historical data.
     For now, it returns a placeholder value.
     """
-    # Placeholder implementation
-    # In a real scenario, this function would fetch historical data and compute the noise
-    return 0.0  # Replace with actual historical noise calculation
+    return 0.0
 
-# ------------------------------------------------------------------
-# NEW ASYNC WRAPPER
-# ------------------------------------------------------------------
-import asyncio
-async def calculate_hype_score_async(insights, category, location, threshold=20.0, product_name=None):
+async def calculate_hype_score_async(insights, category, location, threshold=20.0, product_name: str | None = None):
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(
-        None, calculate_hype_score, insights, category, location, threshold, product_name
+        None, calculate_hype_score, insights, category or "", location or "", threshold, product_name or ""
     )

@@ -23,13 +23,13 @@ async def load_demo_data():
         ("Limited drop on darknet", 88, "dark_web"),
     ]
     async with AsyncSession(engine) as session:
-        for text, likes, source in demo_rows:
+        for text_val, likes, source in demo_rows:
             await session.execute(
                 text("""
                     INSERT INTO social_data(text, likes, source, timestamp)
                     VALUES (:text, :likes, :source, :timestamp)
                 """),
-                {"text": text, "likes": likes, "source": source, "timestamp": datetime.utcnow().isoformat()}
+                {"text": text_val, "likes": likes, "source": source, "timestamp": datetime.utcnow().isoformat()}
             )
         await session.commit()
     print("✅ Demo data loaded into PostgreSQL")

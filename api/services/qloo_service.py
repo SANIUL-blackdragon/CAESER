@@ -249,8 +249,8 @@ async def get_cultural_insights(
 # -------------------- Module-level startup hook -----------------
 # If you have an ASGI lifespan-handler (FastAPI/Starlette),
 # call _init_connections() there instead.
-if __name__ != "__main__":
-    asyncio.create_task(_init_connections())
+async def init_qloo_service():
+    await _init_connections()
 
 # ------------------------------------------------------------------
 # NEW ASYNC WRAPPER

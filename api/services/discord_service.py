@@ -6,32 +6,40 @@ from email.mime.text import MIMEText
 from datetime import datetime
 import logging
 import sqlite3
+import asyncio
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# ------------------------------------------------------------------
-# AWS Secrets Manager client
-secrets_client = boto3.client('secretsmanager', region_name=os.getenv("AWS_REGION", "us-east-1"))
-
-def _get_secret(secret_id: str) -> str:
-    return secrets_client.get_secret_value(SecretId=secret_id)['SecretString']
-
-# Pull secrets once at import time
-DISCORD_WEBHOOK_URL = _get_secret("discord_webhook")
-SLACK_WEBHOOK_URL   = _get_secret("slack_webhook")
-
-EMAIL_HOST      = _get_secret("email_host")      # e.g. "smtp.gmail.com"
-EMAIL_PORT      = int(_get_secret("email_port")) # e.g. 587
-EMAIL_USER      = _get_secret("email_user")
-EMAIL_PASSWORD  = _get_secret("email_password")
-EMAIL_RECIPIENT = _get_secret("email_recipient")
-
 DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
 
 # ------------------------------------------------------------------
+def _get_secret(secret_id: str) -> str:
+    """
+    Get secret from AWS Secrets Manager with fallback to environment variables.
+    Initializes boto3 client on demand to avoid issues during import.
+    """
+    secret_value = ""
+    try:
+        # First, try environment variables (often used in CI/CD or local dev)
+        env_var_name = secret_id.upper().replace("-", "_")
+        secret_value = os.getenv(env_var_name, "")
+        if secret_value:
+            return secret_value
+
+        # If not in env, try AWS Secrets Manager
+        secrets_client = boto3.client('secretsmanager', region_name=os.getenv("AWS_REGION", "us-east-1"))
+        secret_value = secrets_client.get_secret_value(SecretId=secret_id)['SecretString']
+        return secret_value
+    except Exception as e:
+        # This will catch botocore.exceptions.NoCredentialsError if AWS isn't configured
+        logger.warning(f"Could not retrieve secret '{secret_id}'. Error: {e}. Service may be disabled.")
+        return "" # Return empty string to signify failure
+
+# ------------------------------------------------------------------
 def is_product_marked(product_name, category):
+    # This function remains unchanged
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
@@ -51,6 +59,13 @@ email_alerts   = []
 def _flush_discord():
     if not discord_alerts:
         return
+    
+    DISCORD_WEBHOOK_URL = _get_secret("discord_webhook")
+    if not DISCORD_WEBHOOK_URL:
+        logger.warning("DISCORD_WEBHOOK_URL not set. Cannot send Discord alerts.")
+        discord_alerts.clear()
+        return
+
     payload = {"content": "\n".join(discord_alerts)}
     try:
         requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=5).raise_for_status()
@@ -62,6 +77,13 @@ def _flush_discord():
 def _flush_slack():
     if not slack_alerts:
         return
+
+    SLACK_WEBHOOK_URL = _get_secret("slack_webhook")
+    if not SLACK_WEBHOOK_URL:
+        logger.warning("SLACK_WEBHOOK_URL not set. Cannot send Slack alerts.")
+        slack_alerts.clear()
+        return
+
     payload = {"text": "\n".join(slack_alerts)}
     try:
         requests.post(SLACK_WEBHOOK_URL, json=payload, timeout=5).raise_for_status()
@@ -73,6 +95,25 @@ def _flush_slack():
 def _flush_email():
     if not email_alerts:
         return
+
+    EMAIL_HOST = _get_secret("email_host")
+    EMAIL_PORT_STR = _get_secret("email_port")
+    EMAIL_USER = _get_secret("email_user")
+    EMAIL_PASSWORD = _get_secret("email_password")
+    EMAIL_RECIPIENT = _get_secret("email_recipient")
+
+    if not all([EMAIL_HOST, EMAIL_PORT_STR, EMAIL_USER, EMAIL_PASSWORD, EMAIL_RECIPIENT]):
+        logger.warning("Email settings are incomplete. Cannot send email alerts.")
+        email_alerts.clear()
+        return
+        
+    try:
+        EMAIL_PORT = int(EMAIL_PORT_STR)
+    except (ValueError, TypeError):
+        logger.error(f"Invalid EMAIL_PORT: {EMAIL_PORT_STR}. Must be an integer.")
+        email_alerts.clear()
+        return
+
     body = "\n\n".join(email_alerts)
     msg = MIMEText(body)
     msg["Subject"] = "CÆSER Alert Batch"
@@ -90,6 +131,7 @@ def _flush_email():
     email_alerts.clear()
 
 # ------------------------------------------------------------------
+# The send_*_alert functions remain unchanged as they only append to lists
 def send_discord_alert(prediction, hype_data):
     product_name = prediction['product'].get('name', 'Unknown Product')
     category = prediction['product'].get('category', 'Unknown')
@@ -144,7 +186,7 @@ def send_email_alert(prediction, hype_data):
         f"Product: {product_name}\n"
         f"Category: {category}\n"
         f"Demand Uplift: {prediction['uplift']:.2f}%\n"
-        f"Confidence: {prediction['confidence']:.2f}\n"
+        f"Confidence: {prediction['confidence']:.2f}%\n"
         f"Strategy: {prediction['strategy']}\n"
         f"Hype Score: {hype_data['averageScore']:.2f}\n"
         f"Hourly Sentiment Change: {hype_data['hourly_sentiment_change']:.2f}%"
@@ -173,7 +215,6 @@ def send_alert(prediction, hype_data):
 # ------------------------------------------------------------------
 # NEW ASYNC WRAPPER
 # ------------------------------------------------------------------
-import asyncio
 async def send_alert_async(prediction, hype_data):
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, send_alert, prediction, hype_data)

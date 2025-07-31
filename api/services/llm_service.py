@@ -34,6 +34,7 @@ redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 client = AsyncOpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=OPENROUTER_API_KEY,
+    http_client=None,
 )
 
 # -----------------------------------------------------------------------------
@@ -90,7 +91,10 @@ async def _get_prediction_async(product: Dict, insights: Dict, hype_score: float
             messages=[{"role": "user", "content": prompt}],
             timeout=30,
         )
-        data = json.loads(resp.choices[0].message.content.strip())
+        content = resp.choices[0].message.content
+        if content is None:
+            raise ValueError("LLM response content is None")
+        data = json.loads(content.strip())
 
         # Validate required keys
         required = {"uplift", "strategy", "confidence", "trend"}
@@ -114,6 +118,13 @@ async def _get_prediction_async(product: Dict, insights: Dict, hype_score: float
         logger.error("LLM request failed: %s", e)
         log_llm_data_quality("errors", 1.0)
         return {"success": False, "data": None, "message": f"LLM request failed: {e}"}
+
+# -----------------------------------------------------------------------------
+# Public async prediction endpoint
+# -----------------------------------------------------------------------------
+async def get_prediction_async(product: Dict, insights: Dict, hype_score: float) -> Dict:
+    """Public async wrapper for the prediction logic."""
+    return await _get_prediction_async(product, insights, hype_score)
 
 # -----------------------------------------------------------------------------
 # Sync wrapper (100 % backward-compatible)

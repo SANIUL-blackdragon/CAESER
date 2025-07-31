@@ -1,7 +1,8 @@
 import logging
 from logging.handlers import RotatingFileHandler
+import os
 
-def setup_logging(name: str = __name__, level: int = logging.INFO, log_file: str = None) -> logging.Logger:
+def setup_logging(name: str = __name__, level: int = logging.INFO, log_file: str | None = os.getenv("LOG_FILE")) -> logging.Logger:
     """Configure and return a logger instance.
     Args:
         name (str): Logger name (defaults to module name).

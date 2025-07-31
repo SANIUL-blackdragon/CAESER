@@ -17,9 +17,10 @@ from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
-from sqlalchemy import insert, select, text
+from sqlalchemy import create_engine, select, text, Table, MetaData, Column, String, Float, Integer, JSON, TIMESTAMP
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.dialects.postgresql import insert
 import redis.asyncio as redis
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
@@ -31,6 +32,7 @@ from .services import (
     integrations_service,
     llm_service,
     qloo_service,
+    init_qloo_service,
 )
 
 logging.basicConfig(
@@ -67,10 +69,27 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 engine = create_async_engine(
     DB_URL, pool_pre_ping=True, pool_size=10, max_overflow=20
 )
-AsyncSessionLocal = sessionmaker(
+AsyncSessionLocal = async_sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+
+# ---------- DATABASE TABLES ----------
+metadata = MetaData()
+
+competitors = Table(
+    "competitors",
+    metadata,
+    Column("name", String, primary_key=True),
+    Column("hype_score", Float, nullable=False),
+)
+
+categories = Table(
+    "categories",
+    metadata,
+    Column("category_name", String, primary_key=True),
+    Column("keywords", String),
+)
 
 # ---------- FASTAPI ----------
 app = FastAPI(title="CÆSER API v3")
@@ -169,7 +188,6 @@ async def init_db_indexes() -> None:
                 """
             )
         )
-        await conn.commit()
 
 # ---------- CACHED QLOO with granular key ----------
 async def cached_qloo(
@@ -235,6 +253,7 @@ async def predict_trend(product_name: str, tags: str) -> Dict:
 @app.on_event("startup")
 async def startup_event():
     await init_db_indexes()
+    await init_qloo_service()
     await FastAPILimiter.init(redis_client)
     Instrumentator().instrument(app).expose(app)
     logger.info(os.getenv("STARTUP_MESSAGE", "CÆSER API v3 live 🚀"))
@@ -329,12 +348,9 @@ async def set_log_message(body: LogMessageIn):
 @app.get("/competitors")
 async def competitors():
     async with AsyncSessionLocal() as session:
-        rows = (
-            await session.execute(
-                select(text("name, hype_score")).select_from(text("competitors"))
-            )
-        ).fetchall()
-    return {r[0]: {"hype": r[1]} for r in rows}
+        result = await session.execute(select(competitors))
+        rows = result.fetchall()
+    return {r.name: {"hype": r.hype_score} for r in rows}
 
 @app.post(
     "/competitors/add",
@@ -342,7 +358,7 @@ async def competitors():
 )
 async def add_competitor(body: CompetitorIn):
     async with AsyncSessionLocal() as session:
-        stmt = insert(text("competitors")).values(
+        stmt = insert(competitors).values(
             name=body.name, hype_score=body.hype_score
         )
         stmt = stmt.on_conflict_do_update(
@@ -362,7 +378,7 @@ async def add_competitor(body: CompetitorIn):
 )
 async def add_or_update_category(body: CategoryIn):
     async with AsyncSessionLocal() as session:
-        stmt = insert(text("categories")).values(
+        stmt = insert(categories).values(
             category_name=body.category_name, keywords=body.keywords
         )
         stmt = stmt.on_conflict_do_update(
@@ -379,16 +395,11 @@ async def add_or_update_category(body: CategoryIn):
 @app.get("/categories")
 async def list_categories():
     async with AsyncSessionLocal() as session:
-        rows = (
-            await session.execute(
-                select(text("category_name, keywords")).select_from(
-                    text("categories")
-                )
-            )
-        ).fetchall()
+        result = await session.execute(select(categories))
+        rows = result.fetchall()
     return {
         "success": True,
-        "data": {r[0]: r[1].split(",") for r in rows},
+        "data": {r.category_name: r.keywords.split(",") for r in rows},
     }
 
 @app.get("/insights/{location}")

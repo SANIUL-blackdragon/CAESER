@@ -66,7 +66,7 @@ def predict_trend(product_name: str, tags: str) -> dict:
             forecast = m.predict(future)
             peak_row = forecast.loc[forecast["yhat"].idxmax()]
             peak_date = peak_row["ds"].strftime("%Y-%m-%d")
-            peak_days = (peak_row["ds"] - timestamps[-1]).days
+            peak_days = (peak_row["ds"] - timestamps[-1]).days # type: ignore
             confidence = 0.9  # Prophet gives intervals; simplified here
         else:
             # Holt-Winters (faster for short series)

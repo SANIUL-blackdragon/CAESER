@@ -70,6 +70,7 @@ class SocialMediaSpider(scrapy.Spider):
         "ITEM_PIPELINES": {"__main__.SqlitePipeline": 1},
         "DOWNLOADER_MIDDLEWARES": {
             "__main__.Retry429Middleware": 550,
+            "__main__.AdaptiveBackoffMiddleware": 560
         },
         "DOWNLOAD_DELAY": 1.2,
         "CONCURRENT_REQUESTS": 8,
@@ -217,17 +218,14 @@ class Retry429Middleware(RetryMiddleware):
             retry_after = int(response.headers.get("Retry-After", 60))
             spider.logger.info(f"429 received, retrying after {retry_after}s")
             time.sleep(retry_after)
-        return super().retry(request, reason, spider)
+        return super()._retry(request, reason, spider)
 
 # Append right after the existing Retry429Middleware class in social_media_spider.py
-class AdaptiveBackoffMiddleware:
+class AdaptiveBackoffMiddleware(RetryMiddleware):
     """429/503 aware with exponential back-off and jitter."""
-    def __init__(self, backoff_base=1.0):
-        self.backoff_base = backoff_base
-
-    @classmethod
-    def from_crawler(cls, crawler):
-        return cls(backoff_base=crawler.settings.getfloat("BACKOFF_BASE", 1.0))
+    def __init__(self, settings, *args, **kwargs):
+        super().__init__(settings, *args, **kwargs)
+        self.backoff_base = self.settings.getfloat("BACKOFF_BASE", 1.0)
 
     def process_response(self, request, response, spider):
         if response.status in {429, 503}:
@@ -240,13 +238,6 @@ class AdaptiveBackoffMiddleware:
             return self._retry(request, reason, spider) or response
         return response
 
-    def _retry(self, request, reason, spider):
-        # re-use scrapy’s built-in retry
-        from scrapy.downloadermiddlewares.retry import RetryMiddleware as RM
-        return RM.retry(self, request, reason, spider)
-
-# ---- add to custom_settings ----
-# DOWNLOADER_MIDDLEWARES  += {"__main__.AdaptiveBackoffMiddleware": 560}
 # ------------------------------------------------------------------
 if __name__ == "__main__":
     import argparse

@@ -1,59 +1,19 @@
-# ---------- Core API stack ----------
-fastapi==0.110.0              # Fast async web framework (REST & WebSocket)
-uvicorn==0.22.0               # ASGI server (uvloop + HTTP/2)
-
-# ---------- Database & ORM ----------
-sqlalchemy[asyncio]==2.0.30   # Async SQL toolkit + ORM
-asyncpg==0.27.0               # High-performance PostgreSQL driver
-alembic==1.9.4                # Schema migrations for SQLAlchemy
-redis==4.5.1                  # In-memory cache / broker (used by Celery & FastAPI-Limiter)
-
-# ---------- Task queue ----------
-celery==5.3.1                 # Distributed task queue (scraping, background jobs)
-
-# ---------- LLM & AI ----------
-openai==1.30.4                # OpenRouter / DeepSeek client
-textblob==0.17.1              # Simple sentiment analysis (fallback)
-
-# ---------- Data science ----------
-pandas==1.5.3                 # Data frames & analytics
-numpy==1.24.2                 # Numerical operations
-statsmodels==0.13.5           # Time-series forecasting (Holt-Winters, ARIMA)
-
-# ---------- Scraping ----------
-scrapy==2.8.0                 # Large-scale web crawling
-fake-useragent==0.1.11        # Rotating user-agents to reduce 429s
-aiohttp==3.8.4                # Async HTTP requests for real-time scraping
-
-# ---------- Visualisation / Reporting ----------
-streamlit==1.20.0             # Interactive demo dashboard
-plotly==5.13.0                # Rich charts (trends, heatmaps, radar)
-openpyxl==3.1.2               # Excel export in Streamlit
-reportlab==3.6.12             # PDF report generation
-
-# ---------- NLP ----------
-spacy>=3.7.0,<4.0.0           # Industrial-strength NLP (tokenisation, NER)
-# en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0-py3-none-any.whl  # Default English pipeline
-
-# ---------- External trends ----------
-pytrends==4.8.0               # Google Trends wrapper (fallback when API fails)
-
-# ---------- Cloud / Secrets ----------
-boto3==1.26.0                 # AWS Secrets Manager & S3
-requests==2.28.2              # Synchronous HTTP (used by Discord, Salesforce, Google)
-
-# ---------- Observability ----------
-prometheus-fastapi-instrumentator==6.0.0  # /metrics endpoint for FastAPI
-
-# ---------- Rate limiting ----------
-fastapi-limiter==0.1.5        # Redis-backed per-IP & per-route limits
-
-# ---------- Validation / Pydantic ----------
-pydantic>=2.7.4,<3.0.0              # Request/response schema validation
-
-# ---------- Environment / Config ----------
-python-dotenv==0.21.0         # Runtime .env loading
-
-# ---------- Dev / Testing (optional) ----------
-pytest==7.2.2                 # Unit tests
-pytest-asyncio==0.20.3        # Async test support
+fastapi
+celery
+redis
+sqlalchemy
+asyncpg
+fastapi-limiter
+pydantic
+boto3
+requests
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+statsmodels
+textblob
+numpy<2
+pandas
+scipy
+prophet>=1.1.7
+backoff

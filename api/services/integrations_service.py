@@ -9,6 +9,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.oauth2.service_account import Credentials
 from functools import lru_cache
+import asyncio
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -51,11 +52,14 @@ def get_google_sheets_service():
     Returns a cached Google Sheets service object.
     """
     try:
-        creds = Credentials.from_service_account_info(json.loads(GOOGLE_SHEETS_CREDENTIALS))
+        creds_json = GOOGLE_SHEETS_CREDENTIALS
+        if not creds_json:
+            raise ValueError("Google Sheets credentials are not set.")
+        creds = Credentials.from_service_account_info(json.loads(creds_json))
         service = build('sheets', 'v4', credentials=creds, cache_discovery=False)
         logger.info("Google Sheets service initialized successfully")
         return service
-    except Exception as e:
+    except (ValueError, json.JSONDecodeError, HttpError) as e:
         logger.error(f"Failed to initialize Google Sheets service: {str(e)}")
         return None
 
@@ -70,8 +74,8 @@ def append_to_google_sheets(prediction, hype_data):
         return {"success": False, "message": "Failed to initialize Google Sheets service"}
 
     values = [[
-        prediction['product'].get('name', 'Unknown'),
-        prediction['product'].get('category', 'Unknown'),
+        prediction.get('product', {}).get('name', 'Unknown'),
+        prediction.get('product', {}).get('category', 'Unknown'),
         prediction.get('uplift', 0.0),
         prediction.get('confidence', 0.0),
         prediction.get('strategy', 'Unknown'),
@@ -105,12 +109,13 @@ def get_salesforce_access_token():
         return None
 
     auth_url = f"{SALESFORCE_INSTANCE_URL}/services/oauth2/token"
+    password = (SALESFORCE_PASSWORD or "") + (SALESFORCE_TOKEN or "")
     payload = {
         'grant_type': 'password',
         'client_id': SALESFORCE_CLIENT_ID,
         'client_secret': SALESFORCE_CLIENT_SECRET,
         'username': SALESFORCE_USERNAME,
-        'password': SALESFORCE_PASSWORD + SALESFORCE_TOKEN
+        'password': password
     }
     response = requests.post(auth_url, data=payload, timeout=10)
     response.raise_for_status()
@@ -132,8 +137,8 @@ def create_salesforce_record(prediction, hype_data):
         'Content-Type': 'application/json'
     }
     data = {
-        'Name': prediction['product'].get('name', 'Unknown Product'),
-        'Category__c': prediction['product'].get('category', 'Unknown'),
+        'Name': prediction.get('product', {}).get('name', 'Unknown Product'),
+        'Category__c': prediction.get('product', {}).get('category', 'Unknown'),
         'Demand_Uplift__c': prediction.get('uplift', 0.0),
         'Confidence__c': prediction.get('confidence', 0.0),
         'Strategy__c': prediction.get('strategy', 'Unknown'),
@@ -190,7 +195,7 @@ def send_integrations(prediction, hype_data):
     Push data to Google Sheets, Salesforce, and queue Discord alerts.
     """
     # Queue a short Discord message for each prediction
-    product_name = prediction['product'].get('name', 'Unknown')
+    product_name = prediction.get('product', {}).get('name', 'Unknown')
     uplift = prediction.get('uplift', 0.0)
     queue_discord_alert(f"📈 {product_name}: predicted uplift {uplift:.2%}")
 
@@ -207,7 +212,6 @@ def send_integrations(prediction, hype_data):
 # ------------------------------------------------------------------
 # NEW ASYNC WRAPPER
 # ------------------------------------------------------------------
-import asyncio
 async def send_integrations_async(prediction, hype_data):
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, send_integrations, prediction, hype_data)
