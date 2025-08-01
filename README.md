@@ -116,6 +116,54 @@ CAESER’s unified approach delivers:
 * **Docker & Docker Compose v2+**
 * **Python 3.11+** (for local dev)
 * **API Keys**: QLOO\_API\_KEY, OPENROUTER\_API\_KEY
+* **Redis** : Redis dropped official Windows support. But Memurai is a direct replacement:
+
+Download Memurai: https://www.memurai.com/get-memurai
+
+Install and run as a service
+
+It’ll expose localhost:6379 by default
+
+Test it:
+
+redis-cli ping
+Should respond: PONG
+
+✅ Step 1: Confirm Memurai Is Running
+Hit Win + R, type services.msc, press Enter.
+
+Find Memurai in the list.
+
+Make sure its Status is Running. If not, right-click → Start.
+
+Alternatively:
+
+Get-Service -Name Memurai*
+
+
+
+🧪 Step 2: Test Redis Without redis-cli
+We’ll use Python to ping Redis, like pros:
+
+Paste this into a Python script or the REPL:
+```python
+import redis
+
+try:
+    r = redis.Redis(host='localhost', port=6379, db=0)
+    response = r.ping()
+    print("Redis is alive:", response)
+except redis.ConnectionError as e:
+    print("Redis connection failed:", e)
+```
+
+
+If it prints:
+
+Redis is alive: True
+
+You're golden. 🎯
+
 
 ### Clone & Configure
 
@@ -136,6 +184,61 @@ docker-compose up --build -d
 * Dashboard: [http://localhost:8501](http://localhost:8501)
 
 ### Local Development
+
+start postgreSQL server first
+```powershell
+$env:PGDATA="C:\Program Files\PostgreSQL\17\data"
+pg_ctl status
+pg_ctl -D "C:\Program Files\PostgreSQL\17\data" start
+
+```
+Step 1: Edit pg_hba.conf
+This file controls how Postgres authenticates clients.
+
+Locate your pg_hba.conf. On Windows with default Postgres install, it’s usually here:
+
+C:\Program Files\PostgreSQL\17\data\pg_hba.conf
+
+or wherever your Postgres data directory is.
+
+Open pg_hba.conf with a text editor as admin (e.g. Notepad++ or VSCode run as Administrator).
+
+Look for the lines that start with:
+
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+
+
+Step 2: Modify auth method to trust
+Change the lines for local connections like this:
+
+# IPv4 local connections:
+host    all             all             127.0.0.1/32            trust
+
+# IPv6 local connections:
+host    all             all             ::1/128                 trust
+
+
+If there’s a line like:
+
+host    all             all             127.0.0.1/32            md5
+
+Replace md5 (password auth) with trust (no password needed).
+
+Step 3: Save and restart PostgreSQL service
+After saving, restart Postgres so it reloads the config:
+
+Open Services (services.msc) on Windows.
+
+Find postgresql-x64-17 (or your version).
+
+Right-click → Restart.
+
+Or restart via command prompt (run as admin):
+
+net stop postgresql-x64-17
+net start postgresql-x64-17
+
+
 
 ```bash
 # Backend

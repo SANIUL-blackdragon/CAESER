@@ -16,22 +16,22 @@ async def _init_connections() -> None:
     try:
         pg_pool = await asyncpg.create_pool(POSTGRES_URL, min_size=1, max_size=10)
         async with pg_pool.acquire() as conn:
-            await conn.execute(
-                """
+            await conn.execute("""
                 CREATE TABLE IF NOT EXISTS data_quality (
                     metric TEXT NOT NULL,
                     value REAL NOT NULL,
                     source TEXT NOT NULL,
                     timestamp TIMESTAMPTZ DEFAULT NOW()
                 );
+            """)
+            await conn.execute("""
                 CREATE TABLE IF NOT EXISTS llm_data_quality (
                     metric TEXT NOT NULL,
                     value REAL NOT NULL,
                     timestamp TIMESTAMPTZ DEFAULT NOW()
                 );
-                """
-            )
-        logger.info("PostgreSQL connected and data_quality table ensured.")
+            """)
+        logger.info("PostgreSQL connected and tables ensured.")
     except Exception as e:
         logger.error(f"Failed to connect to PostgreSQL or create table: {e}")
         pg_pool = None

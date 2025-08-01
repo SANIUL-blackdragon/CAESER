@@ -38,6 +38,9 @@ async def _init_connections() -> None:
                     product_name TEXT,
                     created_at TIMESTAMPTZ DEFAULT NOW()
                 );
+                """)
+            await conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS social_data (
                     id SERIAL PRIMARY KEY,
                     source TEXT,
@@ -45,6 +48,9 @@ async def _init_connections() -> None:
                     likes INTEGER,
                     timestamp TIMESTAMPTZ
                 );
+                """)
+            await conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS categories (
                     category_name TEXT PRIMARY KEY,
                     keywords TEXT

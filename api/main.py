@@ -6,6 +6,7 @@ import os
 import time
 from datetime import datetime
 from typing import Dict, List, Optional, Union
+from fastapi import FastAPI
 
 # api/main.py (ADD AT TOP)
 import os
@@ -24,9 +25,19 @@ from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, select, text, Table, MetaData, Column, String, Float, Integer, JSON, TIMESTAMP
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.dialects.postgresql import insert
 import redis.asyncio as redis
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
+from prometheus_fastapi_instrumentator import Instrumentator
+
+app = FastAPI()
+
+instrumentator = Instrumentator()
+instrumentator.instrument(app)  # Instrument after app is created
+instrumentator.expose(app)
+
 
 # Import the unchanged service layer
 from .services import (
@@ -69,13 +80,12 @@ os.environ["OPENROUTER_API_KEY"] = OPENROUTER  # Critical for LLM service
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 # ---------- SERVICES ----------
-engine = create_async_engine(
-    DB_URL, pool_pre_ping=True, pool_size=10, max_overflow=20
-)
+engine = create_async_engine(DB_URL, pool_pre_ping=True)
+
 AsyncSessionLocal = async_sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
-redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+redis_client = redis.Redis(host='localhost', port=6379)
 
 # ---------- DATABASE TABLES ----------
 metadata = MetaData()
@@ -146,51 +156,65 @@ class RetrainOut(BaseModel):
 # ---------- UTIL ----------
 async def init_db_indexes() -> None:
     async with engine.begin() as conn:
-        await conn.execute(
-            text(
-                """
-                CREATE TABLE IF NOT EXISTS competitors (
-                    name TEXT PRIMARY KEY,
-                    hype_score REAL NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS predictions (
-                    id SERIAL PRIMARY KEY,
-                    product_name TEXT,
-                    data JSONB
-                );
-                CREATE TABLE IF NOT EXISTS hype_scores (
-                    id SERIAL PRIMARY KEY,
-                    score REAL,
-                    sentiment REAL,
-                    category TEXT,
-                    location TEXT,
-                    product_name TEXT,
-                    created_at TIMESTAMPTZ DEFAULT NOW()
-                );
-                CREATE TABLE IF NOT EXISTS outcomes (
-                    id SERIAL PRIMARY KEY,
-                    prediction_id INTEGER,
-                    actual_uplift REAL,
-                    timestamp TIMESTAMPTZ DEFAULT NOW()
-                );
-                CREATE TABLE IF NOT EXISTS model_weights (
-                    key TEXT PRIMARY KEY,
-                    value REAL
-                );
-                CREATE TABLE IF NOT EXISTS categories (
-                    category_name TEXT PRIMARY KEY,
-                    keywords TEXT
-                );
-                CREATE TABLE IF NOT EXISTS social_data (
-                    id SERIAL PRIMARY KEY,
-                    source TEXT,
-                    text TEXT,
-                    likes INTEGER,
-                    timestamp TIMESTAMPTZ
-                );
-                """
-            )
-        )
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS competitors (
+                name TEXT PRIMARY KEY,
+                hype_score REAL NOT NULL
+            );
+        """))
+
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS predictions (
+                id SERIAL PRIMARY KEY,
+                product_name TEXT,
+                data JSONB
+            );
+        """))
+
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS hype_scores (
+                id SERIAL PRIMARY KEY,
+                score REAL,
+                sentiment REAL,
+                category TEXT,
+                location TEXT,
+                product_name TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+        """))
+
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS outcomes (
+                id SERIAL PRIMARY KEY,
+                prediction_id INTEGER,
+                actual_uplift REAL,
+                timestamp TIMESTAMPTZ DEFAULT NOW()
+            );
+        """))
+
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS model_weights (
+                key TEXT PRIMARY KEY,
+                value REAL
+            );
+        """))
+
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS categories (
+                category_name TEXT PRIMARY KEY,
+                keywords TEXT
+            );
+        """))
+
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS social_data (
+                id SERIAL PRIMARY KEY,
+                source TEXT,
+                text TEXT,
+                likes INTEGER,
+                timestamp TIMESTAMPTZ
+            );
+        """))
 
 # ---------- CACHED QLOO with granular key ----------
 async def cached_qloo(
@@ -263,7 +287,6 @@ async def startup_event():
     await init_llm_service()
     await init_predict_trend_service()
     await FastAPILimiter.init(redis_client)
-    Instrumentator().instrument(app).expose(app)
     logger.info(os.getenv("STARTUP_MESSAGE", "CÆSER API v3 live 🚀"))
 
 # ---------- ENDPOINTS ----------

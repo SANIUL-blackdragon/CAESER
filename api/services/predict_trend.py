@@ -34,6 +34,9 @@ async def _init_connections() -> None:
                     likes INTEGER,
                     timestamp TIMESTAMPTZ
                 );
+                """)
+            await conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS trend_predictions (
                     id SERIAL PRIMARY KEY,
                     product_name TEXT,
@@ -43,6 +46,9 @@ async def _init_connections() -> None:
                     confidence REAL,
                     timestamp TIMESTAMPTZ DEFAULT NOW()
                 );
+                """)
+            await conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_trend_lookup ON social_data(source, text);
                 """
             )
