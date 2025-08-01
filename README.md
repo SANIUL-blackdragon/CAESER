@@ -1,3 +1,4 @@
+
 # CAESER (Cultural Affinity Simulation Engine for Retail)
 
 [![License: Modified MIT](https://img.shields.io/badge/License-Modified%20MIT-blue.svg)](LICENSE)
