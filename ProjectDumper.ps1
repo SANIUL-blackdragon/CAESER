@@ -5,7 +5,7 @@
 param(
     [string]$OutputPath = "project-dump.md",
     [string[]]$ExcludeDirs = @(".git", "venv", "node_modules", ".vscode", "__pycache__", "test", "tests", "config", "node_modules", "dist", "build", "logs", "temp", "tmp", "cache", "txt", "img", "md"),
-    [string[]]$ExcludeFiles = @("*.log", "*.tmp", "*.exe", "*.dll", "*.bin", "*.zip", "*.tar", "*.gz", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.pdf", ".json", ".lock", ".md", ".ldf", ".bak", ".ps1",  ".db", "mjs", "package-lock.json" ,"package.json", "ProjectDumper - Copy.ps1", "ProjectDumper.ps1"),
+    [string[]]$ExcludeFiles = @("*.log", "*.tmp", "*.exe", "*.dll", "*.bin", "*.zip", "*.tar", "*.gz", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.pdf", ".json", ".lock", ".md", ".ldf", ".bak", ".ps1",  ".db", "mjs", "package-lock.json" ,"package.json", "ProjectDumper - Copy.ps1", "ProjectDumper.ps1", ".env"),
     [int]$MaxFileSize = 10MB
 )
 
