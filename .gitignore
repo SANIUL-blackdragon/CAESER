@@ -35,6 +35,10 @@ test-results/
 # Dependencies
 node_modules/
 venv/
+.venv/
+__pycache__/
+*.egg-info/
+*.egg
 
 # Database files
 *.db

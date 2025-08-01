@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
+import os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+
 import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+import pandas as pd
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.dialects.postgresql import insert, AsyncSession
 from sqlalchemy.sql import text
 from datetime import datetime
 import os

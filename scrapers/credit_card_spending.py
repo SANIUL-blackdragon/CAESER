@@ -1,11 +1,15 @@
 """
 credit_card_spending.py – real API + demo CSV fallback
 """
-import asyncio, csv, os, logging, aiohttp
-from datetime import datetime, timedelta
+import os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+
+import asyncio
+import pandas as pd
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
-import pathlib
 
 DB_PATH = os.getenv("DB_PATH", "../data/caeser.db")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

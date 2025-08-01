@@ -1,12 +1,13 @@
-import scrapy, asyncio, aiohttp, json, os, random, time, logging, pathlib
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy import text
-from datetime import datetime
+import os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+
+import scrapy
 from scrapy.crawler import CrawlerProcess
-from scrapy.http import Request
-from fake_useragent import UserAgent
-from scrapy.downloadermiddlewares.retry import RetryMiddleware
-from scrapy.utils.response import response_status_message
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
+import json
 
 DB_PATH          = os.getenv("DB_PATH", "../data/caeser.db")
 PROXY_LIST       = os.getenv("PROXY_LIST", "").split(",") if os.getenv("PROXY_LIST") else []

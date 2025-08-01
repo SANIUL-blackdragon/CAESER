@@ -1,4 +1,4 @@
-# api/main.py  –  v3 + semaphore + AWS Secrets Manager
+# api/main.py  –  v3 + semaphore
 import asyncio
 import json
 import logging
@@ -12,7 +12,6 @@ import os
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
-import boto3
 import numpy as np
 import pandas as pd
 from celery import Celery
@@ -52,24 +51,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ---------- SECRETS ----------
-secrets = boto3.client(
-    "secretsmanager",
-    region_name=os.getenv("AWS_REGION", "us-east-1")
-)
+def get_secret(name: str, fallback: Optional[str] = None) -> str:
+    """Get a secret from an environment variable."""
+    val = os.getenv(name, fallback)
+    if val is None:
+        logger.warning(f"Secret '{name}' not found in environment variables.")
+        return ""
+    return val
 
-def get_secret(name: str, fallback: Optional[str] = None) -> str: #type: ignore
-    """Always return a string (never dict or None)."""
-    try:
-        val = json.loads(secrets.get_secret_value(SecretId=name)["SecretString"])
-        if isinstance(val, dict):
-            # if the secret itself is a JSON blob, stringify it
-            return json.dumps(val)
-        return str(val)
-    except Exception:
-        return str(os.getenv(name, fallback or ""))
-
-DB_URL       = get_secret("caeser-db-url")
-REDIS_URL    = get_secret("caeser-redis-url")
+DB_URL       = get_secret("DB_URL")
+REDIS_URL    = get_secret("REDIS_URL")
 QLOO_API_KEY = os.getenv("QLOO_API_KEY")
 OPENROUTER = os.getenv("OPENROUTER_API_KEY")
 os.environ["OPENROUTER_API_KEY"] = OPENROUTER  # Critical for LLM service

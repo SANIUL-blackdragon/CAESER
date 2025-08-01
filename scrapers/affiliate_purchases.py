@@ -3,7 +3,14 @@ affiliate_purchases.py – real APIs + demo fallback
 """
 import asyncio, json, os, logging, csv, aiohttp
 from datetime import datetime, timedelta
+import os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+
+import asyncio
+import pandas as pd
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 
 DB_PATH = os.getenv("DB_PATH", "../data/caeser.db")

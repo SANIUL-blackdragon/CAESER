@@ -1,8 +1,14 @@
 # frontend/src/main.py – v2 + helpers + validator
 import asyncio, os, json, logging, re
 from datetime import datetime
+import os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), '..','..', '.env'))
+
 import streamlit as st
-import requests, pandas as pd, plotly.express as px, plotly.graph_objects as go
+import requests
+import pandas as pd
+import plotly.express as px
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table

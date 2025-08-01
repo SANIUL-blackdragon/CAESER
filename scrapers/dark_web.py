@@ -1,11 +1,15 @@
 """
 dark_web.py – async + proxy + demo fallback + NLP filter
 """
-import asyncio, csv, os, random, logging, pathlib
-from datetime import datetime
-from typing import List, Tuple
-import spacy
+import os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+
+import asyncio
+import pandas as pd
+import aiohttp
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 
 nlp = spacy.load("en_core_web_sm")

@@ -1,5 +1,4 @@
 import os
-import boto3
 import requests
 import smtplib
 from email.mime.text import MIMEText
@@ -19,25 +18,12 @@ pg_pool: Optional[asyncpg.Pool] = None
 # ------------------------------------------------------------------
 def _get_secret(secret_id: str) -> str:
     """
-    Get secret from AWS Secrets Manager with fallback to environment variables.
-    Initializes boto3 client on demand to avoid issues during import.
+    Get secret from environment variables.
     """
-    secret_value = ""
-    try:
-        # First, try environment variables (often used in CI/CD or local dev)
-        env_var_name = secret_id.upper().replace("-", "_")
-        secret_value = os.getenv(env_var_name, "")
-        if secret_value:
-            return secret_value
-
-        # If not in env, try AWS Secrets Manager
-        secrets_client = boto3.client('secretsmanager', region_name=os.getenv("AWS_REGION", "us-east-1"))
-        secret_value = secrets_client.get_secret_value(SecretId=secret_id)['SecretString']
-        return secret_value
-    except Exception as e:
-        # This will catch botocore.exceptions.NoCredentialsError if AWS isn't configured
-        logger.warning(f"Could not retrieve secret '{secret_id}'. Error: {e}. Service may be disabled.")
-        return "" # Return empty string to signify failure
+    secret_value = os.getenv(secret_id.upper().replace("-", "_"), "")
+    if not secret_value:
+        logger.warning(f"Could not retrieve secret '{secret_id}'. Service may be disabled.")
+    return secret_value
 
 # ------------------------------------------------------------------
 async def is_product_marked(product_name: str, category: str) -> bool:

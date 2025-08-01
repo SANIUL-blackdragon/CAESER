@@ -4,7 +4,6 @@ import requests
 import logging
 import sqlite3
 import backoff
-import boto3
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.oauth2.service_account import Credentials
@@ -15,19 +14,13 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------
-# 0. Secrets Manager helper
+# 0. Secrets helper
 # ------------------------------------------------------------------
-_secrets_client = boto3.client("secretsmanager", region_name=os.getenv("AWS_REGION", "us-east-1"))
-
 def _get_secret(secret_name: str, default=None):
     """
-    Fetch secret from AWS Secrets Manager; fall back to env var if not found.
+    Fetch secret from environment variables.
     """
-    try:
-        return _secrets_client.get_secret_value(SecretId=secret_name)["SecretString"]
-    except Exception as e:
-        logger.warning(f"Could not pull secret '{secret_name}' from AWS: {e}")
-        return os.getenv(secret_name, default)
+    return os.getenv(secret_name, default)
 
 # ------------------------------------------------------------------
 # 1. Configuration
@@ -40,7 +33,7 @@ SALESFORCE_USERNAME     = _get_secret("SALESFORCE_USERNAME")
 SALESFORCE_PASSWORD     = _get_secret("SALESFORCE_PASSWORD")
 SALESFORCE_TOKEN        = _get_secret("SALESFORCE_TOKEN")
 SALESFORCE_INSTANCE_URL = _get_secret("SALESFORCE_INSTANCE_URL")
-DISCORD_WEBHOOK_SECRET_NAME = "discord_webhook"   # AWS secret name
+DISCORD_WEBHOOK_SECRET_NAME = "discord_webhook"   # env var name
 DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
 
 # ------------------------------------------------------------------
