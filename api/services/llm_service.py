@@ -21,7 +21,6 @@ SITE_NAME          = "CAESER"
 
 logger = logging.getLogger(__name__)
 
-# async Redis client
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
 # Async OpenAI client

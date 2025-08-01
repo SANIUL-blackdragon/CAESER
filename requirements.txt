@@ -18,3 +18,8 @@ scipy
 prophet>=1.1.7
 backoff
 psycopg2
+# Stable, BOM-safe versions
+streamlit==1.37.1
+altair==5.3.0
+jsonschema==4.23.0
+jsonschema-specifications==2023.12.1

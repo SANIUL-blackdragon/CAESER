@@ -17,6 +17,8 @@ settings.yaml
 *.bak
 *.backup
 docs/
+project-dump.md
+
 
 # IDE
 .vscode/
