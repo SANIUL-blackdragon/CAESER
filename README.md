@@ -1,6 +1,9 @@
 
 # CAESER (Cultural Affinity Simulation Engine for Retail)
 
+> 🏆 Built for the [Qloo LLM Hackathon 2025](https://qloo-hackathon.devpost.com/)  
+> This project was designed and developed in just less than 12 days — merging Qloo’s cultural intelligence with LLM-powered prediction engines to shape retail’s next frontier.
+
 [![License: Modified MIT](https://img.shields.io/badge/License-Modified%20MIT-blue.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](#)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](#)
@@ -553,6 +556,18 @@ Monitoring & Alerts (api/cron.py, api/services/discord_service.py):
 
 A cron job performs periodic health checks.
 discord_service.py sends notifications to a Discord channel when key thresholds (e.g., Hype Score) are met.
+
+## 🧠 Judging Criteria Match
+
+
+| Criteria                 | Our Approach                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------- |
+| **LLM Integration**      | Uses OpenRouter’s DeepSeek LLMs for prediction + strategy generation            |
+| **Qloo API Use**         | Deep integration for affinity scoring, real-time persona generation             |
+| **Originality**          | Synthetic buyer modeling, 59+ hype metrics, sentiment-to-emoji translators      |
+| **Technical Execution**  | Fully modular backend + frontend stack, Docker-ready, Redis, Celery, PostgreSQL |
+| **Real-World Potential** | Retailers can deploy this to optimize product strategy instantly                |
+
 
 ## ❓ FAQ
 
