@@ -7,6 +7,11 @@ import time
 from datetime import datetime
 from typing import Dict, List, Optional, Union
 
+# api/main.py (ADD AT TOP)
+import os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+
 import boto3
 import numpy as np
 import pandas as pd
@@ -65,8 +70,10 @@ def get_secret(name: str, fallback: Optional[str] = None) -> str: #type: ignore
 
 DB_URL       = get_secret("caeser-db-url")
 REDIS_URL    = get_secret("caeser-redis-url")
-QLOO_API_KEY = get_secret("qloo-api-key")
-OPENROUTER   = get_secret("openrouter-key")
+QLOO_API_KEY = os.getenv("QLOO_API_KEY")
+OPENROUTER = os.getenv("OPENROUTER_API_KEY")
+os.environ["OPENROUTER_API_KEY"] = OPENROUTER  # Critical for LLM service
+
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 

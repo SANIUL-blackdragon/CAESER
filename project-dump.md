@@ -1,5 +1,5 @@
 ﻿# Project Dump: D:\LAPTOP\TO_EARN\AI\CAESER
-Generated: 2025-08-01 04:12:40
+Generated: 2025-08-01 08:58:14
 Max File Size: 10MB
 
 ---
@@ -13,11 +13,12 @@ Max File Size: 10MB
 STARTUP_MESSAGE="CÆSER API is live and ready 🚀"
 
 # --- API Keys ---
-QLOO_API_KEY=your_qloo_api_key
-OPENROUTER_API_KEY=your_openrouter_api_key
+QLOO_API_KEY=Ed8qH8iz9GVhxRR2JVkVjVpwcxx1vy_at3TQPxIekkY
+OPENROUTER_API_KEY=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
 
 # --- Database (PostgreSQL) ---
-DB_PATH=postgresql://caeser_user:caeser_pass@postgres:5432/caeser
+# .env
+DB_PATH=postgresql+asyncpg://caeser_user:caeser_pass@localhost:5432/caeser
 
 # --- Redis ---
 REDIS_URL=redis://redis:6379/0
@@ -26,7 +27,7 @@ REDIS_URL=redis://redis:6379/0
 API_BASE_URL=http://localhost:8000
 
 # --- Discord ---
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_STRING
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/1400641359064596553/qbMMf4rebXmD0IcWHgqXW-30n5FeL2-zjSk3em-RxTA_csEJ4zAr6hIFSCr0CBW4FaAq
 
 # --- Email (optional) ---
 EMAIL_HOST=smtp.gmail.com
@@ -115,117 +116,13 @@ DEFAULT_INSIGHT_TYPES=brand,demographics,heatmap
 
 ``$language
 
-# A generic, single database configuration.
-
+# alembic.ini
 [alembic]
-# path to migration scripts.
-# this is typically a path given in POSIX (e.g. forward slashes)
-# format, relative to the token %(here)s which refers to the location of this
-# ini file
 script_location = %(here)s/migrations
-
-# template used to generate migration file names; The default value is %%(rev)s_%%(slug)s
-# Uncomment the line below if you want the files to be prepended with date and time
-# see https://alembic.sqlalchemy.org/en/latest/tutorial.html#editing-the-ini-file
-# for all available tokens
-# file_template = %%(year)d_%%(month).2d_%%(day).2d_%%(hour).2d%%(minute).2d-%%(rev)s_%%(slug)s
-
-# sys.path path, will be prepended to sys.path if present.
-# defaults to the current working directory.  for multiple paths, the path separator
-# is defined by "path_separator" below.
-prepend_sys_path = .
-
-
-# timezone to use when rendering the date within the migration file
-# as well as the filename.
-# If specified, requires the python>=3.9 or backports.zoneinfo library and tzdata library.
-# Any required deps can installed by adding `alembic[tz]` to the pip requirements
-# string value is passed to ZoneInfo()
-# leave blank for localtime
-# timezone =
-
-# max length of characters to apply to the "slug" field
-# truncate_slug_length = 40
-
-# set to 'true' to run the environment during
-# the 'revision' command, regardless of autogenerate
-# revision_environment = false
-
-# set to 'true' to allow .pyc and .pyo files without
-# a source .py file to be detected as revisions in the
-# versions/ directory
-# sourceless = false
-
-# version location specification; This defaults
-# to <script_location>/versions.  When using multiple version
-# directories, initial revisions must be specified with --version-path.
-# The path separator used here should be the separator specified by "path_separator"
-# below.
-# version_locations = %(here)s/bar:%(here)s/bat:%(here)s/alembic/versions
-
-# path_separator; This indicates what character is used to split lists of file
-# paths, including version_locations and prepend_sys_path within configparser
-# files such as alembic.ini.
-# The default rendered in new alembic.ini files is "os", which uses os.pathsep
-# to provide os-dependent path splitting.
-#
-# Note that in order to support legacy alembic.ini files, this default does NOT
-# take place if path_separator is not present in alembic.ini.  If this
-# option is omitted entirely, fallback logic is as follows:
-#
-# 1. Parsing of the version_locations option falls back to using the legacy
-#    "version_path_separator" key, which if absent then falls back to the legacy
-#    behavior of splitting on spaces and/or commas.
-# 2. Parsing of the prepend_sys_path option falls back to the legacy
-#    behavior of splitting on spaces, commas, or colons.
-#
-# Valid values for path_separator are:
-#
-# path_separator = :
-# path_separator = ;
-# path_separator = space
-# path_separator = newline
-#
-# Use os.pathsep. Default configuration used for new projects.
-path_separator = os
-
-# set to 'true' to search source files recursively
-# in each "version_locations" directory
-# new in Alembic version 1.10
-# recursive_version_locations = false
-
-# the output encoding used when revision files
-# are written from script.py.mako
-# output_encoding = utf-8
-
-# database URL.  This is consumed by the user-maintained env.py script only.
-# other means of configuring database URLs may be customized within the env.py
-# file.
-sqlalchemy.url = %(DB_PATH)s
-# post_write_hooks defines scripts or Python functions that are run
-# on newly generated revision scripts.  See the documentation for further
-# detail and examples
-
-# format using "black" - use the console_scripts runner, against the "black" entrypoint
-# hooks = black
-# black.type = console_scripts
-# black.entrypoint = black
-# black.options = -l 79 REVISION_SCRIPT_FILENAME
-
-# lint with attempts to fix using "ruff" - use the module runner, against the "ruff" module
-# hooks = ruff
-# ruff.type = module
-# ruff.module = ruff
-# ruff.options = check --fix REVISION_SCRIPT_FILENAME
-
-# Alternatively, use the exec runner to execute a binary found on your PATH
-# hooks = ruff
-# ruff.type = exec
-# ruff.executable = ruff
-# ruff.options = check --fix REVISION_SCRIPT_FILENAME
-
-# Logging configuration.  This is also consumed by the user-maintained
-# env.py script only.
+sqlalchemy.url = postgresql+asyncpg://caeser_user:caeser_pass@localhost:5432/caeser
+# Logging configuration
+# This section configures the logging for Alembic and SQLAlchemy.
+# It uses a simple console handler that outputs to stderr.
 [loggers]
 keys = root,sqlalchemy,alembic
 
@@ -259,7 +156,6 @@ formatter = generic
 [formatter_generic]
 format = %(levelname)-5.5s [%(name)s] %(message)s
 datefmt = %H:%M:%S
-
 `
 
 
@@ -793,10 +689,15 @@ datefmt = %H:%M:%S
 #!/usr/bin/env python3
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy import text
+from sqlalchemy.sql import text
 from datetime import datetime
+import os
+from dotenv import load_dotenv
 
-DB_URL = "postgresql://caeser_user:caeser_pass@localhost:5432/caeser"
+# Load environment variables from .env file in the root directory
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+
+DB_URL = os.getenv("DB_PATH", "postgresql+asyncpg://caeser_user:caeser_pass@localhost:5432/caeser")
 
 async def load_demo_data():
     engine = create_async_engine(DB_URL)
@@ -814,16 +715,24 @@ async def load_demo_data():
         # Dark Web
         ("Limited drop on darknet", 88, "dark_web"),
     ]
+    
     async with AsyncSession(engine) as session:
-        for text_val, likes, source in demo_rows:
+        for i, (text_val, likes, source) in enumerate(demo_rows, 1):
             await session.execute(
                 text("""
-                    INSERT INTO social_data(text, likes, source, timestamp)
-                    VALUES (:text, :likes, :source, :timestamp)
+                    INSERT INTO social_data(id, platform, post_content, sentiment_score, created_at)
+                    VALUES (:id, :platform, :post_content, :sentiment_score, :created_at)
                 """),
-                {"text": text_val, "likes": likes, "source": source, "timestamp": datetime.utcnow().isoformat()}
+                {
+                    "id": i,
+                    "platform": source,
+                    "post_content": text_val,
+                    "sentiment_score": float(likes),
+                    "created_at": datetime.fromisoformat("2025-08-01T02:12:10.651398")
+                }
             )
         await session.commit()
+    
     print("✅ Demo data loaded into PostgreSQL")
 
 if __name__ == "__main__":
@@ -978,19 +887,28 @@ function Show-Tree {
 # Run the function
 Show-Tree
 `
++-- .continue/
+|   +-- mcpServers/
+|   |   |-- new-mcp-server.yaml
 +-- .pytest_cache/
 |   +-- v/
 |   |   +-- cache/
 |   |   |   |-- lastfailed
 |   |   |   |-- nodeids
 |   |   |   |-- stepwise
+|   |   |   |-- __init__.py
+|   |   |-- __init__.py
 |   |-- .gitignore
 |   |-- CACHEDIR.TAG
 |   |-- README.md
+|   |-- __init__.py
 +-- api/
 |   +-- controllers/
+|   |   |-- __init__.py
 |   +-- models/
+|   |   |-- __init__.py
 |   +-- routes/
+|   |   |-- __init__.py
 |   +-- services/
 |   |   |-- data_quality_service.py
 |   |   |-- discord_service.py
@@ -1002,25 +920,35 @@ Show-Tree
 |   |   |-- __init__.py
 |   +-- utils/
 |   |   |-- logging.py
+|   |   |-- __init__.py
 |   |-- cron.py
 |   |-- main.py
+|   |-- __init__.py
 +-- bin/
 |   +-- sqlite/
 |   |   |-- sqldiff.exe
 |   |   |-- sqlite3.exe
 |   |   |-- sqlite3_analyzer.exe
 |   |   |-- sqlite3_rsync.exe
+|   |   |-- __init__.py
+|   |-- __init__.py
 +-- data/
 |   +-- processed/
+|   |   |-- __init__.py
 |   +-- raw/
+|   |   |-- __init__.py
 |   +-- schemas/
+|   |   |-- __init__.py
 |   +-- temp/
+|   |   |-- __init__.py
 |   |-- caeser.db
 |   |-- init_db.py
+|   |-- __init__.py
 +-- docs/
 |   +-- img/
 |   |   |-- mermaid_diagram_2025207-1.png
 |   |   |-- mermaid_diagram_2025207-2.png
+|   |   |-- __init__.py
 |   +-- md/
 |   |   |-- architecture.md
 |   |   |-- CAESER_MVP_Day1_Day1,5_Plan.markdown
@@ -1034,19 +962,27 @@ Show-Tree
 |   |   |-- naming-conventions.md
 |   |   |-- OPENROUTER_LLM_INTEGRATION.md
 |   |   |-- Qloo-Insights-API-Guide.markdown
+|   |   |-- __init__.py
 |   +-- txt/
 |   |   |-- draft-main.txt
 |   |   |-- draft.txt
 |   |   |-- feature_draft.txt
 |   |   |-- future-upgrades.md
 |   |   |-- qloo-draft.txt
+|   |   |-- __init__.py
+|   |-- __init__.py
 +-- frontend/
 |   +-- components/
+|   |   |-- __init__.py
 |   +-- public/
+|   |   |-- __init__.py
 |   +-- src/
 |   |   |-- main.py
 |   |   |-- outcome_form.py
+|   |   |-- __init__.py
 |   +-- styles/
+|   |   |-- __init__.py
+|   |-- __init__.py
 +-- migrations/
 |   +-- versions/
 |   |   |-- 20250729_add_categories.py
@@ -1054,10 +990,13 @@ Show-Tree
 |   |   |-- 20250730_pg_indexes.py
 |   |   |-- 4c0ff554c6e2_initial_migration.py
 |   |   |-- a9772e6a7448_merge_categories_and_competitors.py
+|   |   |-- __init__.py
 |   |-- env.py
 |   |-- README
 |   |-- script.py.mako
+|   |-- __init__.py
 +-- notebooks/
+|   |-- __init__.py
 +-- scrapers/
 |   |-- affiliate_purchases.py
 |   |-- credit_card_spending.py
@@ -1068,9 +1007,12 @@ Show-Tree
 |   |-- google_trends.py
 |   |-- scraper_config.json
 |   |-- social_media_spider.py
+|   |-- __init__.py
 +-- tests/
+|   |-- conftest.py
 |   |-- test_api.py
 |   |-- test_predict_trend.py
+|   |-- __init__.py
 |-- .env
 |-- .env.example
 |-- .gitignore
@@ -1089,6 +1031,37 @@ Show-Tree
 |-- README.md
 |-- requirements.txt
 |-- tree.ps1
+|-- __init__.py
+
+## File: __init__.py
+
+``$language
+
+# CAESER/__init__.py
+"""
+Root package marker for the CÆSER project.
+"""
+__version__ = "0.1.0"
+`
+
+
+## File: .continue\mcpServers\new-mcp-server.yaml
+
+``$language
+
+name: New MCP server
+version: 0.0.1
+schema: v1
+mcpServers:
+  - name: New MCP server
+    command: npx
+    args:
+      - -y
+      - <your-mcp-server>
+    env: {}
+
+`
+
 
 ## File: api\cron.py
 
@@ -1232,6 +1205,11 @@ from .services import (
     llm_service,
     qloo_service,
     init_qloo_service,
+    init_data_quality_service,
+    init_discord_service,
+    init_hype_engine_service,
+    init_llm_service,
+    init_predict_trend_service,
 )
 
 logging.basicConfig(
@@ -1453,6 +1431,11 @@ async def predict_trend(product_name: str, tags: str) -> Dict:
 async def startup_event():
     await init_db_indexes()
     await init_qloo_service()
+    await init_data_quality_service()
+    await init_discord_service()
+    await init_hype_engine_service()
+    await init_llm_service()
+    await init_predict_trend_service()
     await FastAPILimiter.init(redis_client)
     Instrumentator().instrument(app).expose(app)
     logger.info(os.getenv("STARTUP_MESSAGE", "CÆSER API v3 live 🚀"))
@@ -1741,70 +1724,140 @@ async def health_check():
 `
 
 
+## File: api\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
+## File: api\controllers\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
+## File: api\models\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
+## File: api\routes\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
 ## File: api\services\data_quality_service.py
 
 ``$language
 
-import sqlite3
 import os
 import logging
 from datetime import datetime, timedelta
+from typing import Optional
+
+import asyncpg
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
+POSTGRES_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/caeser")
+pg_pool: Optional[asyncpg.Pool] = None
 
-def log_data_quality(metric: str, value: float, source: str):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO data_quality (metric, value, source, timestamp)
-        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-    """, (metric, value, source))
-    conn.commit()
-    conn.close()
-    logger.info(f"Logged data quality: {metric} = {value} for {source}")
+async def _init_connections() -> None:
+    global pg_pool
+    try:
+        pg_pool = await asyncpg.create_pool(POSTGRES_URL, min_size=1, max_size=10)
+        async with pg_pool.acquire() as conn:
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS data_quality (
+                    metric TEXT NOT NULL,
+                    value REAL NOT NULL,
+                    source TEXT NOT NULL,
+                    timestamp TIMESTAMPTZ DEFAULT NOW()
+                );
+                CREATE TABLE IF NOT EXISTS llm_data_quality (
+                    metric TEXT NOT NULL,
+                    value REAL NOT NULL,
+                    timestamp TIMESTAMPTZ DEFAULT NOW()
+                );
+                """
+            )
+        logger.info("PostgreSQL connected and data_quality table ensured.")
+    except Exception as e:
+        logger.error(f"Failed to connect to PostgreSQL or create table: {e}")
+        pg_pool = None
 
-def check_data_quality():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
+async def log_data_quality(metric: str, value: float, source: str):
+    if not pg_pool:
+        logger.error("PostgreSQL connection pool not initialized. Cannot log data quality.")
+        return
+    try:
+        async with pg_pool.acquire() as conn:
+            await conn.execute(
+                "INSERT INTO data_quality (metric, value, source, timestamp) VALUES ($1, $2, $3, NOW())",
+                metric, value, source
+            )
+        logger.info(f"Logged data quality: {metric} = {value} for {source}")
+    except Exception as e:
+        logger.error(f"Failed to log data quality to PostgreSQL: {e}")
+
+async def check_data_quality():
+    if not pg_pool:
+        logger.error("PostgreSQL connection pool not initialized. Cannot check data quality.")
+        return {"success": False, "message": "Database not connected"}
+
     metrics = {}
-    
-    # Check missing values in social_data
-    cursor.execute("SELECT COUNT(*) FROM social_data WHERE text IS NULL OR text = ''")
-    missing_values = cursor.fetchone()[0]
-    metrics['missing_values'] = {'value': missing_values, 'source': 'social_data'}
-    log_data_quality('missing_values', missing_values, 'social_data')
-    
-    # Check feed freshness
-    cursor.execute("SELECT MAX(timestamp) FROM social_data")
-    latest_timestamp = cursor.fetchone()[0]
-    freshness = 0 if not latest_timestamp else (datetime.now() - datetime.fromisoformat(latest_timestamp)).total_seconds() / 3600
-    metrics['freshness'] = {'value': freshness, 'source': 'social_data'}
-    log_data_quality('freshness', freshness, 'social_data')
-    
-    # Check API errors (from llm_data_quality for now)
-    cursor.execute("SELECT COUNT(*) FROM llm_data_quality WHERE metric = 'errors' AND value = 1.0")
-    api_errors = cursor.fetchone()[0]
-    metrics['api_errors'] = {'value': api_errors, 'source': 'llm_service'}
-    log_data_quality('api_errors', api_errors, 'llm_service')
-    
-    conn.close()
-    return {
-        "success": True,
-        "data": metrics,
-        "message": "Data quality metrics retrieved"
-    }
+    try:
+        async with pg_pool.acquire() as conn:
+            # Check missing values in social_data
+            missing_values = await conn.fetchval("SELECT COUNT(*) FROM social_data WHERE text IS NULL OR text = ''")
+            metrics['missing_values'] = {'value': missing_values, 'source': 'social_data'}
+            await log_data_quality('missing_values', missing_values, 'social_data')
+            
+            # Check feed freshness
+            latest_timestamp_str = await conn.fetchval("SELECT MAX(timestamp) FROM social_data")
+            freshness = 0.0
+            if latest_timestamp_str:
+                latest_timestamp = datetime.fromisoformat(latest_timestamp_str.isoformat())
+                freshness = (datetime.now() - latest_timestamp).total_seconds() / 3600
+            metrics['freshness'] = {'value': freshness, 'source': 'social_data'}
+            await log_data_quality('freshness', freshness, 'social_data')
+            
+            # Check API errors (from llm_data_quality for now)
+            api_errors = await conn.fetchval("SELECT COUNT(*) FROM llm_data_quality WHERE metric = 'errors' AND value = 1.0")
+            metrics['api_errors'] = {'value': api_errors, 'source': 'llm_service'}
+            await log_data_quality('api_errors', api_errors, 'llm_service')
+            
+        return {
+            "success": True,
+            "data": metrics,
+            "message": "Data quality metrics retrieved"
+        }
+    except Exception as e:
+        logger.error(f"Failed to check data quality from PostgreSQL: {e}")
+        return {"success": False, "message": f"Failed to retrieve data quality: {e}"}
 
-# ------------------------------------------------------------------
-# NEW ASYNC WRAPPER
-# ------------------------------------------------------------------
-import asyncio
 async def check_data_quality_async():
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, check_data_quality)
+    return await check_data_quality()
+
+async def init_data_quality_service():
+    await _init_connections()
+
 `
 
 
@@ -1819,14 +1872,16 @@ import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime
 import logging
-import sqlite3
 import asyncio
+from typing import Optional
+import asyncpg
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
+POSTGRES_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/caeser")
+pg_pool: Optional[asyncpg.Pool] = None
 
 # ------------------------------------------------------------------
 def _get_secret(secret_id: str) -> str:
@@ -1852,17 +1907,20 @@ def _get_secret(secret_id: str) -> str:
         return "" # Return empty string to signify failure
 
 # ------------------------------------------------------------------
-def is_product_marked(product_name, category):
-    # This function remains unchanged
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT COUNT(*) FROM marked_products
-        WHERE product_name = ? AND category = ?
-    """, (product_name, category))
-    count = cursor.fetchone()[0]
-    conn.close()
-    return count > 0
+async def is_product_marked(product_name: str, category: str) -> bool:
+    if not pg_pool:
+        logger.error("PostgreSQL connection pool not initialized. Cannot check if product is marked.")
+        return False
+    try:
+        async with pg_pool.acquire() as conn:
+            count = await conn.fetchval(
+                "SELECT COUNT(*) FROM marked_products WHERE product_name = $1 AND category = $2",
+                product_name, category
+            )
+            return count > 0
+    except Exception as e:
+        logger.error(f"Failed to check if product is marked in PostgreSQL: {e}")
+        return False
 
 # ------------------------------------------------------------------
 # Batched alert queues
@@ -1946,11 +2004,11 @@ def _flush_email():
 
 # ------------------------------------------------------------------
 # The send_*_alert functions remain unchanged as they only append to lists
-def send_discord_alert(prediction, hype_data):
+async def send_discord_alert(prediction, hype_data):
     product_name = prediction['product'].get('name', 'Unknown Product')
     category = prediction['product'].get('category', 'Unknown')
 
-    if not is_product_marked(product_name, category):
+    if not await is_product_marked(product_name, category):
         logger.info("Product %s not marked – skipping Discord", product_name)
         return {"success": True, "message": "Product not marked, alert skipped"}
 
@@ -1967,11 +2025,11 @@ def send_discord_alert(prediction, hype_data):
     discord_alerts.append(alert)
     return {"success": True, "message": "Queued for Discord batch"}
 
-def send_slack_alert(prediction, hype_data):
+async def send_slack_alert(prediction, hype_data):
     product_name = prediction['product'].get('name', 'Unknown Product')
     category = prediction['product'].get('category', 'Unknown')
 
-    if not is_product_marked(product_name, category):
+    if not await is_product_marked(product_name, category):
         logger.info("Product %s not marked – skipping Slack", product_name)
         return {"success": True, "message": "Product not marked, alert skipped"}
 
@@ -1988,11 +2046,11 @@ def send_slack_alert(prediction, hype_data):
     slack_alerts.append(alert)
     return {"success": True, "message": "Queued for Slack batch"}
 
-def send_email_alert(prediction, hype_data):
+async def send_email_alert(prediction, hype_data):
     product_name = prediction['product'].get('name', 'Unknown Product')
     category = prediction['product'].get('category', 'Unknown')
 
-    if not is_product_marked(product_name, category):
+    if not await is_product_marked(product_name, category):
         logger.info("Product %s not marked – skipping Email", product_name)
         return {"success": True, "message": "Product not marked, alert skipped"}
 
@@ -2011,10 +2069,10 @@ def send_email_alert(prediction, hype_data):
     return {"success": True, "message": "Queued for Email batch"}
 
 # ------------------------------------------------------------------
-def send_alert(prediction, hype_data):
-    send_discord_alert(prediction, hype_data)
-    send_slack_alert(prediction, hype_data)
-    send_email_alert(prediction, hype_data)
+async def send_alert(prediction, hype_data):
+    await send_discord_alert(prediction, hype_data)
+    await send_slack_alert(prediction, hype_data)
+    await send_email_alert(prediction, hype_data)
 
     # Flush all queues
     _flush_discord()
@@ -2030,9 +2088,25 @@ def send_alert(prediction, hype_data):
 # NEW ASYNC WRAPPER
 # ------------------------------------------------------------------
 async def send_alert_async(prediction, hype_data):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, send_alert, prediction, hype_data)
+    return await send_alert(prediction, hype_data)
 
+async def init_discord_service():
+    global pg_pool
+    try:
+        pg_pool = await asyncpg.create_pool(POSTGRES_URL, min_size=1, max_size=10)
+        async with pg_pool.acquire() as conn:
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS marked_products (
+                    product_name TEXT PRIMARY KEY,
+                    category TEXT NOT NULL
+                );
+                """
+            )
+        logger.info("PostgreSQL connected and marked_products table ensured.")
+    except Exception as e:
+        logger.error(f"Failed to connect to PostgreSQL or create marked_products table: {e}")
+        pg_pool = None
 `
 
 
@@ -2041,15 +2115,15 @@ async def send_alert_async(prediction, hype_data):
 ``$language
 
 import random
-from typing import Dict
+from typing import Dict, Optional, List
 import logging
 import re
 from collections import defaultdict
-import sqlite3
 import os
 from textblob import TextBlob
 from datetime import datetime, timedelta
 import asyncio
+import asyncpg
 
 # Enhanced emoji mapping with fallback
 EMOJI_MAP = defaultdict(lambda: 0.0, {
@@ -2061,30 +2135,68 @@ EMAIL_REGEX = re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
+POSTGRES_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/caeser")
+pg_pool: Optional[asyncpg.Pool] = None
 
-def get_categories() -> dict:
+async def _init_connections() -> None:
+    global pg_pool
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cur = conn.execute("SELECT category_name, keywords FROM categories")
-        rows = cur.fetchall()
-        conn.close()
-        if not rows:
-            return {
-                "sneakers": ["sneakers", "shoes", "footwear", "kicks"],
-                "electronics": ["electronics", "gadgets", "tech", "devices"],
-                "fashion": ["fashion", "clothing", "apparel", "style"]
-            }
-        return {row[0]: [kw.strip() for kw in row[1].split(",")] for row in rows}
-    except sqlite3.Error as e:
+        pg_pool = await asyncpg.create_pool(POSTGRES_URL, min_size=1, max_size=10)
+        async with pg_pool.acquire() as conn:
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS hype_scores (
+                    id SERIAL PRIMARY KEY,
+                    score REAL,
+                    sentiment REAL,
+                    category TEXT,
+                    location TEXT,
+                    product_name TEXT,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                );
+                CREATE TABLE IF NOT EXISTS social_data (
+                    id SERIAL PRIMARY KEY,
+                    source TEXT,
+                    text TEXT,
+                    likes INTEGER,
+                    timestamp TIMESTAMPTZ
+                );
+                CREATE TABLE IF NOT EXISTS categories (
+                    category_name TEXT PRIMARY KEY,
+                    keywords TEXT
+                );
+                """
+            )
+        logger.info("PostgreSQL connected and hype_scores, social_data, categories tables ensured.")
+    except Exception as e:
+        logger.error(f"Failed to connect to PostgreSQL or create tables: {e}")
+        pg_pool = None
+
+async def get_categories_async() -> Dict[str, List[str]]:
+    if not pg_pool:
+        logger.error("PostgreSQL connection pool not initialized. Cannot fetch categories.")
+        return {
+            "sneakers": ["sneakers", "shoes", "footwear", "kicks"],
+            "electronics": ["electronics", "gadgets", "tech", "devices"],
+            "fashion": ["fashion", "clothing", "apparel", "style"]
+        }
+    try:
+        async with pg_pool.acquire() as conn:
+            rows = await conn.fetch("SELECT category_name, keywords FROM categories")
+            if not rows:
+                return {
+                    "sneakers": ["sneakers", "shoes", "footwear", "kicks"],
+                    "electronics": ["electronics", "gadgets", "tech", "devices"],
+                    "fashion": ["fashion", "clothing", "apparel", "style"]
+                }
+            return {row["category_name"]: [kw.strip() for kw in row["keywords"].split(",")] for row in rows}
+    except Exception as e:
         logger.error(f"Database error while fetching categories: {e}")
         return {
             "sneakers": ["sneakers", "shoes", "footwear", "kicks"],
             "electronics": ["electronics", "gadgets", "tech", "devices"],
             "fashion": ["fashion", "clothing", "apparel", "style"]
         }
-
-category_keywords = get_categories()
 
 # Cultural keywords for bonus scoring
 CULTURAL_KEYWORDS = ["hype", "trend", "viral", "drop", "exclusive", "limited", "collab"]
@@ -2103,66 +2215,101 @@ def validate_insights(insights: Dict) -> None:
         logger.error("Insights data must be a dictionary")
         raise ValueError("Insights data must be a dictionary")
 
-def save_hype_score(score: float, category: str, location: str, sentiment: float, product_name: str | None = None) -> None:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO hype_scores (score, category, location, sentiment, product_name, created_at)
-        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    """, (score, category or "", location or "", sentiment, product_name or ""))
-    conn.commit()
-    conn.close()
+async def save_hype_score(score: float, category: str, location: str, sentiment: float, product_name: str | None = None) -> None:
+    if not pg_pool:
+        logger.error("PostgreSQL connection pool not initialized. Cannot save hype score.")
+        return
+    try:
+        async with pg_pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO hype_scores (score, category, location, sentiment, product_name, created_at)
+                VALUES ($1, $2, $3, $4, $5, NOW())
+            """, score, category or "", location or "", sentiment, product_name or "")
+    except Exception as e:
+        logger.error(f"Failed to save hype score to PostgreSQL: {e}")
 
-def get_previous_hype_score(category: str, location: str, product_name: str | None = None) -> tuple:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    query = """
-        SELECT score, sentiment FROM hype_scores 
-        WHERE category = ? AND location = ?
-    """
-    params = [category or "", location or ""]
-    if product_name:
-        query += " AND product_name = ?"
-        params.append(product_name or "")
-    query += " ORDER BY created_at DESC LIMIT 1 OFFSET 1"
-    cursor.execute(query, params)
-    result = cursor.fetchone()
-    conn.close()
-    return result if result else (None, None)
+async def get_previous_hype_score(category: str, location: str, product_name: str | None = None) -> tuple:
+    if not pg_pool:
+        logger.error("PostgreSQL connection pool not initialized. Cannot get previous hype score.")
+        return (None, None)
+    try:
+        async with pg_pool.acquire() as conn:
+            query = """
+                SELECT score, sentiment FROM hype_scores 
+                WHERE category = $1 AND location = $2
+            """
+            params = [category or "", location or ""]
+            if product_name:
+                query += " AND product_name = $3"
+                params.append(product_name or "")
+            query += " ORDER BY created_at DESC LIMIT 1 OFFSET 1"
+            
+            # Adjust parameter indexing for asyncpg
+            if product_name:
+                row = await conn.fetchrow(query, params[0], params[1], params[2])
+            else:
+                row = await conn.fetchrow(query, params[0], params[1])
+            
+            return (row["score"], row["sentiment"]) if row else (None, None)
+    except Exception as e:
+        logger.error(f"Failed to get previous hype score from PostgreSQL: {e}")
+        return (None, None)
 
-def get_hourly_sentiment_change(category: str, location: str, product_name: str | None = None) -> float:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    query = """
-        SELECT sentiment, created_at FROM hype_scores 
-        WHERE category = ? AND location = ? AND created_at > ?
-    """
-    params = [category or "", location or "", (datetime.now() - timedelta(hours=1)).isoformat()]
-    if product_name:
-        query += " AND product_name = ?"
-        params.append(product_name or "")
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    conn.close()
-    if len(rows) < 2:
+async def get_hourly_sentiment_change(category: str, location: str, product_name: str | None = None) -> float:
+    if not pg_pool:
+        logger.error("PostgreSQL connection pool not initialized. Cannot get hourly sentiment change.")
         return 0.0
-    latest_sentiment, prev_sentiment = rows[-1][0], rows[0][0]
-    return ((latest_sentiment - prev_sentiment) / prev_sentiment * 100) if prev_sentiment != 0 else 0.0
+    try:
+        async with pg_pool.acquire() as conn:
+            query = """
+                SELECT sentiment, created_at FROM hype_scores 
+                WHERE category = $1 AND location = $2 AND created_at > NOW() - INTERVAL '1 hour'
+            """
+            params = [category or "", location or ""]
+            if product_name:
+                query += " AND product_name = $3"
+                params.append(product_name or "")
+            
+            if product_name:
+                rows = await conn.fetch(query, params[0], params[1], params[2])
+            else:
+                rows = await conn.fetch(query, params[0], params[1])
+            
+            if len(rows) < 2:
+                return 0.0
+            
+            # Sort by created_at to ensure correct latest/oldest sentiment
+            rows.sort(key=lambda r: r["created_at"])
+            latest_sentiment = rows[-1]["sentiment"]
+            oldest_sentiment = rows[0]["sentiment"]
+            
+            return ((latest_sentiment - oldest_sentiment) / oldest_sentiment * 100) if oldest_sentiment != 0 else 0.0
+    except Exception as e:
+        logger.error(f"Failed to get hourly sentiment change from PostgreSQL: {e}")
+        return 0.0
 
-def get_social_data(category: str, days: int = 7) -> list:
-    keywords = category_keywords.get(category.lower() if category else "", [category or ""])
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    query = f"""
-        SELECT text 
-        FROM social_data 
-        WHERE ({' OR '.join(['text LIKE ?' for _ in keywords])})
-        AND timestamp > datetime('now', '-{days} days')
-    """
-    cursor.execute(query, tuple(f"%{kw}%" for kw in keywords))
-    rows = cursor.fetchall()
-    conn.close()
-    return [row[0] for row in rows]
+async def get_social_data(category: str, days: int = 7) -> List[str]:
+    if not pg_pool:
+        logger.error("PostgreSQL connection pool not initialized. Cannot get social data.")
+        return []
+    try:
+        category_keywords = await get_categories_async() # Fetch categories asynchronously
+        keywords = category_keywords.get(category.lower() if category else "", [category or ""])
+        
+        async with pg_pool.acquire() as conn:
+            # Constructing dynamic WHERE clause for keywords
+            where_clauses = [f"text ILIKE '%{kw}%'" for kw in keywords]
+            query = f"""
+                SELECT text 
+                FROM social_data 
+                WHERE ({' OR '.join(where_clauses)})
+                AND timestamp > NOW() - INTERVAL '{days} days'
+            """
+            rows = await conn.fetch(query)
+            return [row["text"] for row in rows]
+    except Exception as e:
+        logger.error(f"Failed to get social data from PostgreSQL: {e}")
+        return []
 
 def emoji_to_sentiment(text: str) -> float:
     scores = [EMOJI_MAP[ch] for ch in text if ch in EMOJI_MAP]
@@ -2171,7 +2318,7 @@ def emoji_to_sentiment(text: str) -> float:
 def scrub_pii(text: str) -> str:
     return EMAIL_REGEX.sub('', text or "")
 
-def calculate_hype_score(insights: Dict, category: str, location: str, threshold: float = 20.0, product_name: str | None = None) -> Dict:
+async def calculate_hype_score(insights: Dict, category: str, location: str, threshold: float = 20.0, product_name: str | None = None) -> Dict:
     validate_insights(insights)
     
     try:
@@ -2180,10 +2327,10 @@ def calculate_hype_score(insights: Dict, category: str, location: str, threshold
         trend_factor = insights["data"].get("trend", 1.0)
         base_score = popularity * 100 * trend_factor
         
-        historical_noise = get_historical_noise(category, location, product_name)
+        historical_noise = await get_historical_noise(category, location, product_name) # Make this async
         hype_score = max(0.0, min(100.0, base_score + historical_noise))
         
-        social_texts = get_social_data(category)
+        social_texts = await get_social_data(category) # Make this async
         if social_texts:
             sentiment_score = sum(
                 TextBlob(scrub_pii(text)).sentiment.polarity + emoji_to_sentiment(text) # type: ignore
@@ -2204,8 +2351,8 @@ def calculate_hype_score(insights: Dict, category: str, location: str, threshold
         cycle_phase = "growth" if hype_score > 50 else "decline"
         confidence_weight = min(1.0, (entities[0]["properties"].get("confidence", 0.5) if entities else 0.5) * 0.8 + 0.2)
         
-        previous_score, previous_sentiment = get_previous_hype_score(category, location, product_name)
-        save_hype_score(hype_score, category, location, sentiment_score, product_name)
+        previous_score, previous_sentiment = await get_previous_hype_score(category, location, product_name) # Make this async
+        await save_hype_score(hype_score, category, location, sentiment_score, product_name) # Make this async
         
         change_detected = False
         change_percent = 0.0
@@ -2213,7 +2360,7 @@ def calculate_hype_score(insights: Dict, category: str, location: str, threshold
             change_percent = ((hype_score - previous_score) / previous_score) * 100
             change_detected = abs(change_percent) > threshold
         
-        hourly_sentiment_change = get_hourly_sentiment_change(category, location, product_name)
+        hourly_sentiment_change = await get_hourly_sentiment_change(category, location, product_name) # Make this async
         
         logger.info(f"Calculated hype score: {hype_score:.2f}, Sentiment: {sentiment_score:.2f}, Change: {change_percent:.2f}%, Hourly Sentiment Change: {hourly_sentiment_change:.2f}%")
         return {
@@ -2243,7 +2390,7 @@ def calculate_hype_score(insights: Dict, category: str, location: str, threshold
             "message": f"Failed to calculate hype score: {str(e)}"
         }
 
-def get_historical_noise(category: str, location: str, product_name: str = None) -> float:
+async def get_historical_noise(category: str, location: str, product_name: str | None = None) -> float:
     """
     Fetch historical noise data based on category, location, and product name.
     This function should be implemented to fetch real historical data.
@@ -2252,11 +2399,10 @@ def get_historical_noise(category: str, location: str, product_name: str = None)
     return 0.0
 
 async def calculate_hype_score_async(insights, category, location, threshold=20.0, product_name: str | None = None):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(
-        None, calculate_hype_score, insights, category or "", location or "", threshold, product_name or ""
-    )
+    return await calculate_hype_score(insights, category or "", location or "", threshold, product_name or "")
 
+async def init_hype_engine_service():
+    await _init_connections()
 `
 
 
@@ -2489,28 +2635,22 @@ async def send_integrations_async(prediction, hype_data):
 
 ``$language
 
-# api/services/llm_service.py
-"""
-LLM service
-- async OpenRouter calls via AsyncOpenAI
-- Redis-based request/response caching
-- 100 % backward-compatible return shape
-"""
 import os
 import json
 import time
-import sqlite3
 import logging
 import asyncio
 import redis.asyncio as redis  # async-first client
+import asyncpg
 
 from openai import AsyncOpenAI
-from typing import Dict
+from typing import Dict, Optional
 
 # -----------------------------------------------------------------------------
 # Config
 # -----------------------------------------------------------------------------
-DB_PATH            = os.getenv("DB_PATH", "./data/caeser.db")
+POSTGRES_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/caeser")
+pg_pool: Optional[asyncpg.Pool] = None
 REDIS_URL          = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 SITE_URL           = "http://localhost:8000"
@@ -2528,21 +2668,44 @@ client = AsyncOpenAI(
     http_client=None,
 )
 
+async def _init_connections() -> None:
+    global pg_pool
+    try:
+        pg_pool = await asyncpg.create_pool(POSTGRES_URL, min_size=1, max_size=10)
+        async with pg_pool.acquire() as conn:
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS llm_data_quality (
+                    metric TEXT NOT NULL,
+                    value REAL NOT NULL,
+                    timestamp TIMESTAMPTZ DEFAULT NOW()
+                );
+                """
+            )
+        logger.info("PostgreSQL connected and llm_data_quality table ensured.")
+    except Exception as e:
+        logger.error(f"Failed to connect to PostgreSQL or create table: {e}")
+        pg_pool = None
+
 # -----------------------------------------------------------------------------
 # Helpers
 # -----------------------------------------------------------------------------
 def sanitize_input(s: str) -> str:
     return s.strip()
 
-def log_llm_data_quality(metric: str, value: float):
-    """Persist metric in SQLite synchronously (fast)."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        "INSERT INTO llm_data_quality (metric, value, timestamp) VALUES (?, ?, ?)",
-        (metric, value, time.time()),
-    )
-    conn.commit()
-    conn.close()
+async def log_llm_data_quality(metric: str, value: float):
+    """Persist metric in PostgreSQL asynchronously."""
+    if not pg_pool:
+        logger.error("PostgreSQL connection pool not initialized. Cannot log LLM data quality.")
+        return
+    try:
+        async with pg_pool.acquire() as conn:
+            await conn.execute(
+                "INSERT INTO llm_data_quality (metric, value, timestamp) VALUES ($1, $2, NOW())",
+                metric, value
+            )
+    except Exception as e:
+        logger.error(f"Failed to log LLM data quality to PostgreSQL: {e}")
 
 # -----------------------------------------------------------------------------
 # Core async function (upgraded & minimal)
@@ -2600,14 +2763,14 @@ async def _get_prediction_async(product: Dict, insights: Dict, hype_score: float
         await redis_client.setex(cache_key, 3600, json.dumps({"success": True, "data": data}))
 
         # Log quality metrics
-        log_llm_data_quality("confidence", data.get("confidence", 0.0))
-        log_llm_data_quality("response_time", time.time() - start)
+        await log_llm_data_quality("confidence", data.get("confidence", 0.0))
+        await log_llm_data_quality("response_time", time.time() - start)
 
         return {"success": True, "data": data, "message": "Prediction generated successfully"}
 
     except Exception as e:
         logger.error("LLM request failed: %s", e)
-        log_llm_data_quality("errors", 1.0)
+        await log_llm_data_quality("errors", 1.0)
         return {"success": False, "data": None, "message": f"LLM request failed: {e}"}
 
 # -----------------------------------------------------------------------------
@@ -2636,31 +2799,37 @@ def get_prediction(product: Dict, insights: Dict, hype_score: float) -> Dict:
 # -----------------------------------------------------------------------------
 # Data-quality endpoint (unchanged)
 # -----------------------------------------------------------------------------
-def get_llm_data_quality() -> Dict:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT metric, AVG(value) as avg_value, COUNT(*) as count
-        FROM llm_data_quality
-        GROUP BY metric
-        """
-    )
-    rows = cursor.fetchall()
-    conn.close()
-    metrics = {row[0]: {"avg_value": row[1], "count": row[2]} for row in rows}
-    return {
-        "success": True,
-        "data": metrics,
-        "message": "LLM data quality metrics retrieved",
-    }
+async def get_llm_data_quality() -> Dict:
+    if not pg_pool:
+        logger.error("PostgreSQL connection pool not initialized. Cannot get LLM data quality.")
+        return {"success": False, "message": "Database not connected"}
+    try:
+        async with pg_pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT metric, AVG(value) as avg_value, COUNT(*) as count
+                FROM llm_data_quality
+                GROUP BY metric
+                """
+            )
+            metrics = {row["metric"]: {"avg_value": row["avg_value"], "count": row["count"]} for row in rows}
+            return {
+                "success": True,
+                "data": metrics,
+                "message": "LLM data quality metrics retrieved",
+            }
+    except Exception as e:
+        logger.error(f"Failed to retrieve LLM data quality from PostgreSQL: {e}")
+        return {"success": False, "message": f"Failed to retrieve LLM data quality: {e}"}
 
 # ------------------------------------------------------------------
 # NEW ASYNC WRAPPER
 # ------------------------------------------------------------------
 async def get_llm_data_quality_async():
-    return get_llm_data_quality()
+    return await get_llm_data_quality()
 
+async def init_llm_service():
+    await _init_connections()
 `
 
 
@@ -2668,12 +2837,13 @@ async def get_llm_data_quality_async():
 
 ``$language
 
-import sqlite3
 import os
 from datetime import datetime, timedelta
 import logging
 import numpy as np
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
+from typing import Dict, Optional, List
+import asyncpg
 
 # Optional Prophet import (graceful fallback)
 try:
@@ -2682,100 +2852,133 @@ try:
 except ImportError:
     HAS_PROPHET = False
 
-DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
+POSTGRES_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/caeser")
+pg_pool: Optional[asyncpg.Pool] = None
+
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+async def _init_connections() -> None:
+    global pg_pool
+    try:
+        pg_pool = await asyncpg.create_pool(POSTGRES_URL, min_size=1, max_size=10)
+        async with pg_pool.acquire() as conn:
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS social_data (
+                    id SERIAL PRIMARY KEY,
+                    source TEXT,
+                    text TEXT,
+                    likes INTEGER,
+                    timestamp TIMESTAMPTZ
+                );
+                CREATE TABLE IF NOT EXISTS trend_predictions (
+                    id SERIAL PRIMARY KEY,
+                    product_name TEXT,
+                    tags TEXT,
+                    predicted_peak_days INTEGER,
+                    predicted_peak_date TEXT,
+                    confidence REAL,
+                    timestamp TIMESTAMPTZ DEFAULT NOW()
+                );
+                CREATE INDEX IF NOT EXISTS idx_trend_lookup ON social_data(source, text);
+                """
+            )
+        logger.info("PostgreSQL connected and trend_predictions, social_data tables ensured.")
+    except Exception as e:
+        logger.error(f"Failed to connect to PostgreSQL or create tables: {e}")
+        pg_pool = None
+
 # ------------------------------------------------------------------
-def predict_trend(product_name: str, tags: str) -> dict:
+async def predict_trend(product_name: str, tags: str) -> Dict:
     """
     Predict trend peak using Holt-Winters or Prophet (if available and data is large).
     """
+    if not pg_pool:
+        logger.error("PostgreSQL connection pool not initialized. Cannot predict trend.")
+        return {"success": False, "message": "Database not connected"}
+
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
+        async with pg_pool.acquire() as conn:
+            tags_list = [tag.strip() for tag in tags.split(",")]
+            # Use ILIKE for case-insensitive search and ANY for array matching
+            query = """
+                SELECT likes, timestamp FROM social_data
+                WHERE source='google_trends' AND (text ILIKE $1 OR text = ANY($2::text[]))
+                ORDER BY timestamp ASC
+            """
+            rows = await conn.fetch(query, f"%{product_name}%", tags_list)
 
-        # Ensure index exists
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_trend_lookup ON social_data(source, text)"
-        )
+            if not rows:
+                logger.warning("No trend data for %s (%s)", product_name, tags)
+                return {"success": False, "message": "No trend data"}
 
-        tags_list = [tag.strip() for tag in tags.split(",")]
-        placeholders = ",".join(["?"] * len(tags_list))
-        query = f"""
-            SELECT likes, timestamp FROM social_data
-            WHERE source='google_trends' AND (text LIKE ? OR text IN ({placeholders}))
-            ORDER BY timestamp ASC
-        """
-        params = [f"%{product_name}%"] + tags_list
-        cursor.execute(query, params)
-        rows = cursor.fetchall()
+            likes = np.array([r["likes"] for r in rows], dtype=float)
+            timestamps = [r["timestamp"] for r in rows]
 
-        if not rows:
-            logger.warning("No trend data for %s (%s)", product_name, tags)
-            return {"success": False, "message": "No trend data"}
+            if len(likes) < 3:
+                logger.warning("Insufficient data points")
+                return {"success": False, "message": "Insufficient data"}
 
-        likes = np.array([r[0] for r in rows], dtype=float)
-        timestamps = [datetime.fromisoformat(r[1]) for r in rows]
+            # --- Model choice ---
+            if HAS_PROPHET and len(likes) > 30:
+                import pandas as pd # Import pandas here if only used in this branch
+                # Prophet for longer series
+                df = pd.DataFrame({
+                    "ds": timestamps,
+                    "y": likes
+                })
+                m = Prophet()
+                m.fit(df)
+                future = m.make_future_dataframe(periods=90)
+                forecast = m.predict(future)
+                peak_row = forecast.loc[forecast["yhat"].idxmax()]
+                peak_date = peak_row["ds"].strftime("%Y-%m-%d")
+                peak_days = (peak_row["ds"] - timestamps[-1]).days # type: ignore
+                confidence = 0.9  # Prophet gives intervals; simplified here
+            else:
+                # Holt-Winters (faster for short series)
+                model = ExponentialSmoothing(likes, trend="add", seasonal=None)
+                fit = model.fit()
+                fcast = fit.forecast(90)
+                peak_idx = int(np.argmax(fcast))
+                peak_days = peak_idx + 1
+                peak_date = (timestamps[-1] + timedelta(days=peak_days)).strftime("%Y-%m-%d")
+                confidence = min(0.95, 1.0 - fit.sse / np.sum(likes ** 2))
 
-        if len(likes) < 3:
-            logger.warning("Insufficient data points")
-            return {"success": False, "message": "Insufficient data"}
+            await conn.execute("""
+                INSERT INTO trend_predictions
+                (product_name, tags, predicted_peak_days, predicted_peak_date, confidence, timestamp)
+                VALUES ($1, $2, $3, $4, $5, NOW())
+            """, product_name, tags, int(peak_days), peak_date, confidence)
 
-        # --- Model choice ---
-        if HAS_PROPHET and len(likes) > 30:
-            # Prophet for longer series
-            df = pd.DataFrame({
-                "ds": timestamps,
-                "y": likes
-            })
-            m = Prophet()
-            m.fit(df)
-            future = m.make_future_dataframe(periods=90)
-            forecast = m.predict(future)
-            peak_row = forecast.loc[forecast["yhat"].idxmax()]
-            peak_date = peak_row["ds"].strftime("%Y-%m-%d")
-            peak_days = (peak_row["ds"] - timestamps[-1]).days # type: ignore
-            confidence = 0.9  # Prophet gives intervals; simplified here
-        else:
-            # Holt-Winters (faster for short series)
-            model = ExponentialSmoothing(likes, trend="add", seasonal=None)
-            fit = model.fit()
-            fcast = fit.forecast(90)
-            peak_idx = int(np.argmax(fcast))
-            peak_days = peak_idx + 1
-            peak_date = (timestamps[-1] + timedelta(days=peak_days)).strftime("%Y-%m-%d")
-            confidence = min(0.95, 1.0 - fit.sse / np.sum(likes ** 2))
-
-        cursor.execute("""
-            INSERT INTO trend_predictions
-            (product_name, tags, predicted_peak_days, predicted_peak_date, confidence, timestamp)
-            VALUES (?,?,?,?,?,?)
-        """, (product_name, tags, float(peak_days), peak_date, confidence,
-              datetime.now().isoformat()))
-        conn.commit()
-
-        logger.info("Trend for %s: peak in %d days on %s (%.2f conf)",
-                    product_name, peak_days, peak_date, confidence)
-        return {
-            "success": True,
-            "predicted_peak_days": int(peak_days),
-            "predicted_peak_date": peak_date,
-            "confidence": confidence
-        }
+            logger.info("Trend for %s: peak in %d days on %s (%.2f conf)",
+                        product_name, peak_days, peak_date, confidence)
+            return {
+                "success": True,
+                "predicted_peak_days": int(peak_days),
+                "predicted_peak_date": peak_date,
+                "confidence": confidence
+            }
 
     except Exception as e:
         logger.error("Trend prediction failed: %s", e)
         return {"success": False, "message": f"Prediction failed: {e}"}
-    finally:
-        conn.close()
+
+# ------------------------------------------------------------------
+async def init_predict_trend_service():
+    await _init_connections()
 
 # ------------------------------------------------------------------
 if __name__ == "__main__":
-    import pandas as pd  # only needed here for Prophet branch
-    result = predict_trend("Wireless Headphones", "electronics, audio")
-    print(result)
+    import asyncio
+    async def main():
+        await init_predict_trend_service()
+        result = await predict_trend("Wireless Headphones", "electronics, audio")
+        print(result)
+    asyncio.run(main())
+
 `
 
 
@@ -3049,12 +3252,13 @@ async def get_cultural_insights_async(location, tags, insight_type="brand"):
 
 ``$language
 
-from .data_quality_service import check_data_quality_async
-from .discord_service import send_alert_async
-from .hype_engine import calculate_hype_score_async
+from .data_quality_service import check_data_quality_async, init_data_quality_service
+from .discord_service import send_alert_async, init_discord_service
+from .hype_engine import calculate_hype_score_async, init_hype_engine_service
 from .integrations_service import send_integrations_async
-from .llm_service import get_prediction_async, get_llm_data_quality_async
+from .llm_service import get_prediction_async, get_llm_data_quality_async, init_llm_service
 from .qloo_service import get_cultural_insights_async, init_qloo_service
+from .predict_trend import predict_trend, init_predict_trend_service
 
 `
 
@@ -3095,6 +3299,33 @@ def setup_logging(name: str = __name__, level: int = logging.INFO, log_file: str
         logger.addHandler(file_handler)
     
     return logger
+`
+
+
+## File: api\utils\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
+## File: bin\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
+## File: bin\sqlite\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
 `
 
 
@@ -3179,9 +3410,7 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------
 # PostgreSQL connection
 # ------------------------------------------------------------------
-DB_URL = os.getenv("DB_PATH")  # postgresql+psycopg2://user:pass@host:5432/db
-if not DB_URL:
-    raise RuntimeError("Environment variable DB_PATH is required (PostgreSQL URL).")
+DB_URL = "postgresql+asyncpg://caeser_user:caeser_pass@localhost:5432/caeser"
 
 engine = create_engine(DB_URL, echo=False, future=True)
 SessionLocal = sessionmaker(bind=engine, future=True)
@@ -3323,6 +3552,78 @@ def init_db():
 
 if __name__ == "__main__":
     init_db()
+`
+
+
+## File: data\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
+## File: data\processed\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
+## File: data\raw\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
+## File: data\schemas\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
+## File: docs\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
+## File: frontend\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
+## File: frontend\components\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
+## File: frontend\public\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
 `
 
 
@@ -3657,50 +3958,71 @@ if st.button("Submit"):
 `
 
 
+## File: frontend\src\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
+## File: frontend\styles\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
 ## File: migrations\env.py
 
 ``$language
 
+import asyncio
 from logging.config import fileConfig
-
-from sqlalchemy import engine_from_config
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy import pool
-
 from alembic import context
+from dotenv import load_dotenv
+import os
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
+# Load environment variables
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+DB_URL = os.getenv("DB_PATH", "postgresql+asyncpg://caeser_user:caeser_pass@localhost:5432/caeser")
+
+# Alembic Config object
 config = context.config
+config.set_main_option('sqlalchemy.url', DB_URL)
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
+# Setup logging
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
+# Metadata for autogenerate support
 target_metadata = None
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+async def run_migrations_online():
+    """Run migrations in 'online' mode using async engine."""
+    connectable = create_async_engine(
+        config.get_main_option("sqlalchemy.url"),
+        poolclass=pool.NullPool
+    )
 
+    async with connectable.connect() as connection:
+        await connection.run_sync(
+            lambda sync_conn: context.configure(
+                connection=sync_conn,
+                target_metadata=target_metadata
+            )
+        )
+        await connection.run_sync(
+            lambda sync_conn: context.run_migrations()
+        )
 
-def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
-    """
+def run_migrations_offline():
+    """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -3712,34 +4034,10 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
-
-def run_migrations_online() -> None:
-    """Run migrations in 'online' mode.
-
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
-    """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
-
-    with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
-
-        with context.begin_transaction():
-            context.run_migrations()
-
-
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    run_migrations_online()
-
+    asyncio.run(run_migrations_online())
 `
 
 
@@ -3783,6 +4081,15 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
     ${downgrades if downgrades else "pass"}
+
+`
+
+
+## File: migrations\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
 
 `
 
@@ -3852,16 +4159,7 @@ def downgrade() -> None:
 
 ## File: migrations\versions\20250730_pg_indexes.py
 
-``$language
-
-"""Add PostgreSQL indexes for categories, predictions, social_data  
-   + partitioning, view, constraints (post-upgrade)
-
-Revision ID: 20250730_pg_indexes
-Revises: a9772e6a7448
-Create Date: 2025-07-30 12:00:00.000000
-"""
-
+```python
 from alembic import op
 import sqlalchemy as sa
 
@@ -3870,79 +4168,85 @@ down_revision = "a9772e6a7448"
 branch_labels = None
 depends_on = None
 
-
 def upgrade() -> None:
-    # 1. Original indexes
-    op.create_index("idx_categories_name", "categories", ["category_name"])
-    op.create_index("idx_predictions_product", "predictions", ["product_name"])
-    op.create_index("idx_social_data_source", "social_data", ["source"])
-    op.create_index(
-        "idx_social_data_source_timestamp",
-        "social_data",
-        ["source", "timestamp"]
-    )
-
-    # 2. NEW: index on text column for faster text filtering
-    op.create_index("idx_social_data_text", "social_data", ["text"])
-
-    # 3. Partition social_data by year (2025 and 2026)
+    # Create a new partitioned table
     op.execute("""
-        ALTER TABLE social_data
-        PARTITION BY RANGE (timestamp);
+        CREATE TABLE social_data_new (
+            id SERIAL,
+            platform TEXT,
+            post_content TEXT,
+            sentiment_score REAL,
+            created_at TIMESTAMPTZ,
+            PRIMARY KEY (id, created_at)
+        ) PARTITION BY RANGE (created_at);
     """)
+    
+    # Create partitions for 2025 and 2026
     op.execute("""
-        CREATE TABLE IF NOT EXISTS social_data_2025
-        PARTITION OF social_data
+        CREATE TABLE social_data_2025 PARTITION OF social_data_new
         FOR VALUES FROM ('2025-01-01') TO ('2026-01-01');
     """)
     op.execute("""
-        CREATE TABLE IF NOT EXISTS social_data_2026
-        PARTITION OF social_data
+        CREATE TABLE social_data_2026 PARTITION OF social_data_new
         FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');
     """)
-
-    # 4. Complex view
+    
+    # Copy data from the old table
     op.execute("""
-        CREATE OR REPLACE VIEW avg_hype_per_category AS
-        SELECT category, AVG(predicted_uplift) AS avg_hype
-        FROM predictions
-        GROUP BY category;
+        INSERT INTO social_data_new (id, platform, post_content, sentiment_score, created_at)
+        SELECT id, platform, post_content, sentiment_score, created_at FROM social_data;
     """)
-
-    # 5. Integrity constraint on competitors
+    
+    # Drop the old table and rename the new one
+    op.execute("DROP TABLE social_data;")
+    op.execute("ALTER TABLE social_data_new RENAME TO social_data;")
+    
+    # Create indexes
+    op.create_index("idx_categories_name", "categories", ["name"])
+    op.create_index("idx_predictions_product", "predictions", ["product_name"])
+    op.create_index("idx_social_data_platform", "social_data", ["platform"])
+    op.create_index("idx_social_data_platform_created_at", "social_data", ["platform", "created_at"])
+    op.create_index("idx_social_data_post_content", "social_data", ["post_content"])
+    
+    # Create view
+    op.execute("""
+        CREATE OR REPLACE VIEW avg_trend_per_category AS
+        SELECT category_id, AVG(trend_score) AS avg_trend
+        FROM predictions
+        GROUP BY category_id;
+    """)
+    
+    # Add hype_score column and constraint
     op.add_column("competitors", sa.Column("hype_score", sa.Float))
     op.execute("""
         ALTER TABLE competitors
         ADD CONSTRAINT hype_range
         CHECK (hype_score >= 0 AND hype_score <= 100)
-        NOT VALID;   -- allows existing rows to be fixed first
+        NOT VALID;
     """)
 
-
 def downgrade() -> None:
-    # 5. Reverse constraints
+    # Reverse constraints
     op.drop_constraint("hype_range", "competitors")
     op.drop_column("competitors", "hype_score")
-
-    # 4. Reverse view
-    op.execute("DROP VIEW IF EXISTS avg_hype_per_category")
-
-    # 3. Reverse partitioning
-    op.execute("DROP TABLE IF EXISTS social_data_2026")
-    op.execute("DROP TABLE IF EXISTS social_data_2025")
-    op.execute("ALTER TABLE social_data DETACH PARTITION social_data_2025")
-    op.execute("ALTER TABLE social_data DETACH PARTITION social_data_2026")
-    op.execute("ALTER TABLE social_data SET NOT PARTITIONED;")
-
-    # 2. NEW: drop text index
-    op.drop_index("idx_social_data_text", table_name="social_data")
-
-    # 1. Reverse original indexes
-    op.drop_index("idx_social_data_source_timestamp", table_name="social_data")
-    op.drop_index("idx_social_data_source", table_name="social_data")
+    
+    # Reverse view
+    op.execute("DROP VIEW IF EXISTS avg_trend_per_category")
+    
+    # Reverse indexes
+    op.drop_index("idx_social_data_post_content", table_name="social_data")
+    op.drop_index("idx_social_data_platform_created_at", table_name="social_data")
+    op.drop_index("idx_social_data_platform", table_name="social_data")
     op.drop_index("idx_predictions_product", table_name="predictions")
     op.drop_index("idx_categories_name", table_name="categories")
-`
+    
+    # Recreate the original non-partitioned table
+    op.execute("""
+        CREATE TABLE social_data_old AS SELECT * FROM social_data;
+    """)
+    op.execute("DROP TABLE social_data;")
+    op.execute("ALTER TABLE social_data_old RENAME TO social_data;")
+```
 
 
 ## File: migrations\versions\4c0ff554c6e2_initial_migration.py
@@ -4010,6 +4314,24 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     pass
+`
+
+
+## File: migrations\versions\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
+## File: notebooks\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
 `
 
 
@@ -4770,7 +5092,16 @@ if __name__ == "__main__":
 `
 
 
+## File: scrapers\__init__.py
+
+``$language
+
+# Autogenerated marker file – keeps dir importable
+
+`
+
+
 ---
 ## Summary
-Total files processed: 40
-Completed: 2025-08-01 04:13:14
+Total files processed: 63
+Completed: 2025-08-01 08:58:42

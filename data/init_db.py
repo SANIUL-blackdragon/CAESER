@@ -25,9 +25,7 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------
 # PostgreSQL connection
 # ------------------------------------------------------------------
-DB_URL = os.getenv("DB_PATH")  # postgresql+psycopg2://user:pass@host:5432/db
-if not DB_URL:
-    raise RuntimeError("Environment variable DB_PATH is required (PostgreSQL URL).")
+DB_URL = "postgresql+asyncpg://caeser_user:caeser_pass@localhost:5432/caeser"
 
 engine = create_engine(DB_URL, echo=False, future=True)
 SessionLocal = sessionmaker(bind=engine, future=True)
