@@ -33,6 +33,11 @@ from .services import (
     llm_service,
     qloo_service,
     init_qloo_service,
+    init_data_quality_service,
+    init_discord_service,
+    init_hype_engine_service,
+    init_llm_service,
+    init_predict_trend_service,
 )
 
 logging.basicConfig(
@@ -254,6 +259,11 @@ async def predict_trend(product_name: str, tags: str) -> Dict:
 async def startup_event():
     await init_db_indexes()
     await init_qloo_service()
+    await init_data_quality_service()
+    await init_discord_service()
+    await init_hype_engine_service()
+    await init_llm_service()
+    await init_predict_trend_service()
     await FastAPILimiter.init(redis_client)
     Instrumentator().instrument(app).expose(app)
     logger.info(os.getenv("STARTUP_MESSAGE", "CÆSER API v3 live 🚀"))

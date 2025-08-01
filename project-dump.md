@@ -1,5 +1,5 @@
 ﻿# Project Dump: D:\LAPTOP\TO_EARN\AI\CAESER
-Generated: 2025-08-01 00:55:32
+Generated: 2025-08-01 04:12:40
 Max File Size: 10MB
 
 ---
@@ -815,13 +815,13 @@ async def load_demo_data():
         ("Limited drop on darknet", 88, "dark_web"),
     ]
     async with AsyncSession(engine) as session:
-        for text, likes, source in demo_rows:
+        for text_val, likes, source in demo_rows:
             await session.execute(
                 text("""
                     INSERT INTO social_data(text, likes, source, timestamp)
                     VALUES (:text, :likes, :source, :timestamp)
                 """),
-                {"text": text, "likes": likes, "source": source, "timestamp": datetime.utcnow().isoformat()}
+                {"text": text_val, "likes": likes, "source": source, "timestamp": datetime.utcnow().isoformat()}
             )
         await session.commit()
     print("✅ Demo data loaded into PostgreSQL")
@@ -978,6 +978,15 @@ function Show-Tree {
 # Run the function
 Show-Tree
 `
++-- .pytest_cache/
+|   +-- v/
+|   |   +-- cache/
+|   |   |   |-- lastfailed
+|   |   |   |-- nodeids
+|   |   |   |-- stepwise
+|   |-- .gitignore
+|   |-- CACHEDIR.TAG
+|   |-- README.md
 +-- api/
 |   +-- controllers/
 |   +-- models/
@@ -990,6 +999,7 @@ Show-Tree
 |   |   |-- llm_service.py
 |   |   |-- predict_trend.py
 |   |   |-- qloo_service.py
+|   |   |-- __init__.py
 |   +-- utils/
 |   |   |-- logging.py
 |   |-- cron.py
@@ -1069,6 +1079,7 @@ Show-Tree
 |-- demo_loader.py
 |-- docker-compose.yml
 |-- Dockerfile
+|-- error.txt
 |-- eslint.config.mjs
 |-- LICENSE
 |-- package-lock.json
@@ -1090,7 +1101,7 @@ import sys
 import logging
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 from typing import Optional
 
@@ -1100,6 +1111,7 @@ logger = logging.getLogger(__name__)
 
 async def health_check_loop():
     while True:
+        ok = False
         try:
             # Perform the health check
             r = requests.get("http://localhost:8000/health", timeout=5)
@@ -1127,6 +1139,10 @@ async def health_check_loop():
                 except Exception as e:
                     logger.error(f"Failed to log health check result in the database: {str(e)}")
                     await session.rollback()
+        except Exception as e:
+            # NEW: guard around db_url / engine creation
+            logger.error(f"Could not build DB URL or engine: {str(e)}")
+            # Continue loop; no return here so the cron keeps running
 
         try:
             # Check for prediction drift and send Discord suggestion if necessary
@@ -1148,10 +1164,14 @@ async def health_check_loop():
                 except Exception as e:
                     logger.error(f"Failed to check prediction drift: {str(e)}")
                     await session.rollback()
+        except Exception as e:
+            # NEW: guard around db_url / engine creation
+            logger.error(f"Could not build DB URL or engine: {str(e)}")
+            # Continue loop; no return here so the cron keeps running
 
         # Sleep for 5 minutes before the next health check
         await asyncio.sleep(300)
-        
+
 webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
 if webhook_url:
     try:
@@ -1184,7 +1204,7 @@ import logging
 import os
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import boto3
 import numpy as np
@@ -1196,9 +1216,10 @@ from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
-from sqlalchemy import insert, select, text
+from sqlalchemy import create_engine, select, text, Table, MetaData, Column, String, Float, Integer, JSON, TIMESTAMP
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.dialects.postgresql import insert
 import redis.asyncio as redis
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
@@ -1210,6 +1231,7 @@ from .services import (
     integrations_service,
     llm_service,
     qloo_service,
+    init_qloo_service,
 )
 
 logging.basicConfig(
@@ -1224,29 +1246,49 @@ secrets = boto3.client(
     region_name=os.getenv("AWS_REGION", "us-east-1")
 )
 
-def get_secret(name: str, fallback: Optional[str] = None) -> str:
+def get_secret(name: str, fallback: Optional[str] = None) -> str: #type: ignore
+    """Always return a string (never dict or None)."""
     try:
-        return json.loads(
-            secrets.get_secret_value(SecretId=name)["SecretString"]
-        )
+        val = json.loads(secrets.get_secret_value(SecretId=name)["SecretString"])
+        if isinstance(val, dict):
+            # if the secret itself is a JSON blob, stringify it
+            return json.dumps(val)
+        return str(val)
     except Exception:
-        return os.getenv(name, fallback)
+        return str(os.getenv(name, fallback or ""))
 
 DB_URL       = get_secret("caeser-db-url")
 REDIS_URL    = get_secret("caeser-redis-url")
 QLOO_API_KEY = get_secret("qloo-api-key")
 OPENROUTER   = get_secret("openrouter-key")
-load_dotenv()
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
-# ---------- SERVICES ----------
 
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+
+# ---------- SERVICES ----------
 engine = create_async_engine(
     DB_URL, pool_pre_ping=True, pool_size=10, max_overflow=20
 )
-AsyncSessionLocal = sessionmaker(
+AsyncSessionLocal = async_sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+
+# ---------- DATABASE TABLES ----------
+metadata = MetaData()
+
+competitors = Table(
+    "competitors",
+    metadata,
+    Column("name", String, primary_key=True),
+    Column("hype_score", Float, nullable=False),
+)
+
+categories = Table(
+    "categories",
+    metadata,
+    Column("category_name", String, primary_key=True),
+    Column("keywords", String),
+)
 
 # ---------- FASTAPI ----------
 app = FastAPI(title="CÆSER API v3")
@@ -1345,7 +1387,6 @@ async def init_db_indexes() -> None:
                 """
             )
         )
-        await conn.commit()
 
 # ---------- CACHED QLOO with granular key ----------
 async def cached_qloo(
@@ -1411,6 +1452,7 @@ async def predict_trend(product_name: str, tags: str) -> Dict:
 @app.on_event("startup")
 async def startup_event():
     await init_db_indexes()
+    await init_qloo_service()
     await FastAPILimiter.init(redis_client)
     Instrumentator().instrument(app).expose(app)
     logger.info(os.getenv("STARTUP_MESSAGE", "CÆSER API v3 live 🚀"))
@@ -1422,8 +1464,8 @@ async def run_scrapy(
     product_name: str,
     sources: str,
     tags: str,
-    locations: str = None,
-    gender: str = None,
+    locations: str = None, #type: ignore
+    gender: str = None, #type: ignore
 ):
     cmd = [
         "scrapy",
@@ -1505,12 +1547,9 @@ async def set_log_message(body: LogMessageIn):
 @app.get("/competitors")
 async def competitors():
     async with AsyncSessionLocal() as session:
-        rows = (
-            await session.execute(
-                select(text("name, hype_score")).select_from(text("competitors"))
-            )
-        ).fetchall()
-    return {r[0]: {"hype": r[1]} for r in rows}
+        result = await session.execute(select(competitors))
+        rows = result.fetchall()
+    return {r.name: {"hype": r.hype_score} for r in rows}
 
 @app.post(
     "/competitors/add",
@@ -1518,7 +1557,7 @@ async def competitors():
 )
 async def add_competitor(body: CompetitorIn):
     async with AsyncSessionLocal() as session:
-        stmt = insert(text("competitors")).values(
+        stmt = insert(competitors).values(
             name=body.name, hype_score=body.hype_score
         )
         stmt = stmt.on_conflict_do_update(
@@ -1538,7 +1577,7 @@ async def add_competitor(body: CompetitorIn):
 )
 async def add_or_update_category(body: CategoryIn):
     async with AsyncSessionLocal() as session:
-        stmt = insert(text("categories")).values(
+        stmt = insert(categories).values(
             category_name=body.category_name, keywords=body.keywords
         )
         stmt = stmt.on_conflict_do_update(
@@ -1555,16 +1594,11 @@ async def add_or_update_category(body: CategoryIn):
 @app.get("/categories")
 async def list_categories():
     async with AsyncSessionLocal() as session:
-        rows = (
-            await session.execute(
-                select(text("category_name, keywords")).select_from(
-                    text("categories")
-                )
-            )
-        ).fetchall()
+        result = await session.execute(select(categories))
+        rows = result.fetchall()
     return {
         "success": True,
-        "data": {r[0]: r[1].split(",") for r in rows},
+        "data": {r.category_name: r.keywords.split(",") for r in rows},
     }
 
 @app.get("/insights/{location}")
@@ -1703,6 +1737,7 @@ async def health_check():
     async with engine.begin() as conn:
         await conn.execute(text("SELECT 1"))
     return {"status": "ok"}
+
 `
 
 
@@ -1762,6 +1797,14 @@ def check_data_quality():
         "data": metrics,
         "message": "Data quality metrics retrieved"
     }
+
+# ------------------------------------------------------------------
+# NEW ASYNC WRAPPER
+# ------------------------------------------------------------------
+import asyncio
+async def check_data_quality_async():
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, check_data_quality)
 `
 
 
@@ -1777,32 +1820,40 @@ from email.mime.text import MIMEText
 from datetime import datetime
 import logging
 import sqlite3
+import asyncio
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# ------------------------------------------------------------------
-# AWS Secrets Manager client
-secrets_client = boto3.client('secretsmanager', region_name=os.getenv("AWS_REGION", "us-east-1"))
-
-def _get_secret(secret_id: str) -> str:
-    return secrets_client.get_secret_value(SecretId=secret_id)['SecretString']
-
-# Pull secrets once at import time
-DISCORD_WEBHOOK_URL = _get_secret("discord_webhook")
-SLACK_WEBHOOK_URL   = _get_secret("slack_webhook")
-
-EMAIL_HOST      = _get_secret("email_host")      # e.g. "smtp.gmail.com"
-EMAIL_PORT      = int(_get_secret("email_port")) # e.g. 587
-EMAIL_USER      = _get_secret("email_user")
-EMAIL_PASSWORD  = _get_secret("email_password")
-EMAIL_RECIPIENT = _get_secret("email_recipient")
-
 DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
 
 # ------------------------------------------------------------------
+def _get_secret(secret_id: str) -> str:
+    """
+    Get secret from AWS Secrets Manager with fallback to environment variables.
+    Initializes boto3 client on demand to avoid issues during import.
+    """
+    secret_value = ""
+    try:
+        # First, try environment variables (often used in CI/CD or local dev)
+        env_var_name = secret_id.upper().replace("-", "_")
+        secret_value = os.getenv(env_var_name, "")
+        if secret_value:
+            return secret_value
+
+        # If not in env, try AWS Secrets Manager
+        secrets_client = boto3.client('secretsmanager', region_name=os.getenv("AWS_REGION", "us-east-1"))
+        secret_value = secrets_client.get_secret_value(SecretId=secret_id)['SecretString']
+        return secret_value
+    except Exception as e:
+        # This will catch botocore.exceptions.NoCredentialsError if AWS isn't configured
+        logger.warning(f"Could not retrieve secret '{secret_id}'. Error: {e}. Service may be disabled.")
+        return "" # Return empty string to signify failure
+
+# ------------------------------------------------------------------
 def is_product_marked(product_name, category):
+    # This function remains unchanged
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
@@ -1822,6 +1873,13 @@ email_alerts   = []
 def _flush_discord():
     if not discord_alerts:
         return
+    
+    DISCORD_WEBHOOK_URL = _get_secret("discord_webhook")
+    if not DISCORD_WEBHOOK_URL:
+        logger.warning("DISCORD_WEBHOOK_URL not set. Cannot send Discord alerts.")
+        discord_alerts.clear()
+        return
+
     payload = {"content": "\n".join(discord_alerts)}
     try:
         requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=5).raise_for_status()
@@ -1833,6 +1891,13 @@ def _flush_discord():
 def _flush_slack():
     if not slack_alerts:
         return
+
+    SLACK_WEBHOOK_URL = _get_secret("slack_webhook")
+    if not SLACK_WEBHOOK_URL:
+        logger.warning("SLACK_WEBHOOK_URL not set. Cannot send Slack alerts.")
+        slack_alerts.clear()
+        return
+
     payload = {"text": "\n".join(slack_alerts)}
     try:
         requests.post(SLACK_WEBHOOK_URL, json=payload, timeout=5).raise_for_status()
@@ -1844,6 +1909,25 @@ def _flush_slack():
 def _flush_email():
     if not email_alerts:
         return
+
+    EMAIL_HOST = _get_secret("email_host")
+    EMAIL_PORT_STR = _get_secret("email_port")
+    EMAIL_USER = _get_secret("email_user")
+    EMAIL_PASSWORD = _get_secret("email_password")
+    EMAIL_RECIPIENT = _get_secret("email_recipient")
+
+    if not all([EMAIL_HOST, EMAIL_PORT_STR, EMAIL_USER, EMAIL_PASSWORD, EMAIL_RECIPIENT]):
+        logger.warning("Email settings are incomplete. Cannot send email alerts.")
+        email_alerts.clear()
+        return
+        
+    try:
+        EMAIL_PORT = int(EMAIL_PORT_STR)
+    except (ValueError, TypeError):
+        logger.error(f"Invalid EMAIL_PORT: {EMAIL_PORT_STR}. Must be an integer.")
+        email_alerts.clear()
+        return
+
     body = "\n\n".join(email_alerts)
     msg = MIMEText(body)
     msg["Subject"] = "CÆSER Alert Batch"
@@ -1861,6 +1945,7 @@ def _flush_email():
     email_alerts.clear()
 
 # ------------------------------------------------------------------
+# The send_*_alert functions remain unchanged as they only append to lists
 def send_discord_alert(prediction, hype_data):
     product_name = prediction['product'].get('name', 'Unknown Product')
     category = prediction['product'].get('category', 'Unknown')
@@ -1915,7 +2000,7 @@ def send_email_alert(prediction, hype_data):
         f"Product: {product_name}\n"
         f"Category: {category}\n"
         f"Demand Uplift: {prediction['uplift']:.2f}%\n"
-        f"Confidence: {prediction['confidence']:.2f}\n"
+        f"Confidence: {prediction['confidence']:.2f}%\n"
         f"Strategy: {prediction['strategy']}\n"
         f"Hype Score: {hype_data['averageScore']:.2f}\n"
         f"Hourly Sentiment Change: {hype_data['hourly_sentiment_change']:.2f}%"
@@ -1940,6 +2025,14 @@ def send_alert(prediction, hype_data):
     successes = [bool(discord_alerts), bool(slack_alerts), bool(email_alerts)]
     return {"success": any(successes),
             "message": "Alerts batched and flushed"}
+
+# ------------------------------------------------------------------
+# NEW ASYNC WRAPPER
+# ------------------------------------------------------------------
+async def send_alert_async(prediction, hype_data):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, send_alert, prediction, hype_data)
+
 `
 
 
@@ -1952,38 +2045,46 @@ from typing import Dict
 import logging
 import re
 from collections import defaultdict
+import sqlite3
+import os
+from textblob import TextBlob
+from datetime import datetime, timedelta
+import asyncio
+
 # Enhanced emoji mapping with fallback
 EMOJI_MAP = defaultdict(lambda: 0.0, {
     "😊": 0.8, "😢": -0.8, "😍": 0.9, "😠": -0.9, "😐": 0.0,
     "👍": 0.7, "👎": -0.7, "🔥": 0.85, "💯": 0.9, "👀": 0.3
 })
 EMAIL_REGEX = re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b')
-import sqlite3
-import os
-from textblob import TextBlob
-from datetime import datetime, timedelta
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
 
-# Load category keywords from database or fallback to hard-coded map
-category_keywords = get_categories()
- 
 def get_categories() -> dict:
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.execute("SELECT category_name, keywords FROM categories")
-    rows = cur.fetchall()
-    conn.close()
-    # Fallback to hard-coded map if table empty
-    if not rows:
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.execute("SELECT category_name, keywords FROM categories")
+        rows = cur.fetchall()
+        conn.close()
+        if not rows:
+            return {
+                "sneakers": ["sneakers", "shoes", "footwear", "kicks"],
+                "electronics": ["electronics", "gadgets", "tech", "devices"],
+                "fashion": ["fashion", "clothing", "apparel", "style"]
+            }
+        return {row[0]: [kw.strip() for kw in row[1].split(",")] for row in rows}
+    except sqlite3.Error as e:
+        logger.error(f"Database error while fetching categories: {e}")
         return {
             "sneakers": ["sneakers", "shoes", "footwear", "kicks"],
             "electronics": ["electronics", "gadgets", "tech", "devices"],
             "fashion": ["fashion", "clothing", "apparel", "style"]
         }
-    return {row[0]: [kw.strip() for kw in row[1].split(",")] for row in rows}
+
+category_keywords = get_categories()
 
 # Cultural keywords for bonus scoring
 CULTURAL_KEYWORDS = ["hype", "trend", "viral", "drop", "exclusive", "limited", "collab"]
@@ -2002,44 +2103,44 @@ def validate_insights(insights: Dict) -> None:
         logger.error("Insights data must be a dictionary")
         raise ValueError("Insights data must be a dictionary")
 
-def save_hype_score(score: float, category: str, location: str, sentiment: float, product_name: str = None) -> None:
+def save_hype_score(score: float, category: str, location: str, sentiment: float, product_name: str | None = None) -> None:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO hype_scores (score, category, location, sentiment, product_name, created_at)
         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    """, (score, category, location, sentiment, product_name))
+    """, (score, category or "", location or "", sentiment, product_name or ""))
     conn.commit()
     conn.close()
 
-def get_previous_hype_score(category: str, location: str, product_name: str = None) -> tuple:
+def get_previous_hype_score(category: str, location: str, product_name: str | None = None) -> tuple:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     query = """
         SELECT score, sentiment FROM hype_scores 
         WHERE category = ? AND location = ?
     """
-    params = [category, location]
+    params = [category or "", location or ""]
     if product_name:
         query += " AND product_name = ?"
-        params.append(product_name)
+        params.append(product_name or "")
     query += " ORDER BY created_at DESC LIMIT 1 OFFSET 1"
     cursor.execute(query, params)
     result = cursor.fetchone()
     conn.close()
     return result if result else (None, None)
 
-def get_hourly_sentiment_change(category: str, location: str, product_name: str = None) -> float:
+def get_hourly_sentiment_change(category: str, location: str, product_name: str | None = None) -> float:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     query = """
         SELECT sentiment, created_at FROM hype_scores 
         WHERE category = ? AND location = ? AND created_at > ?
     """
-    params = [category, location, (datetime.now() - timedelta(hours=1)).isoformat()]
+    params = [category or "", location or "", (datetime.now() - timedelta(hours=1)).isoformat()]
     if product_name:
         query += " AND product_name = ?"
-        params.append(product_name)
+        params.append(product_name or "")
     cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()
@@ -2049,7 +2150,7 @@ def get_hourly_sentiment_change(category: str, location: str, product_name: str 
     return ((latest_sentiment - prev_sentiment) / prev_sentiment * 100) if prev_sentiment != 0 else 0.0
 
 def get_social_data(category: str, days: int = 7) -> list:
-    keywords = category_keywords.get(category.lower(), [category])
+    keywords = category_keywords.get(category.lower() if category else "", [category or ""])
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     query = f"""
@@ -2068,9 +2169,9 @@ def emoji_to_sentiment(text: str) -> float:
     return sum(scores) / (len(scores) or 1)
 
 def scrub_pii(text: str) -> str:
-    return EMAIL_REGEX.sub('', text)
+    return EMAIL_REGEX.sub('', text or "")
 
-def calculate_hype_score(insights: Dict, category: str, location: str, threshold: float = 20.0, product_name: str = None) -> Dict:
+def calculate_hype_score(insights: Dict, category: str, location: str, threshold: float = 20.0, product_name: str | None = None) -> Dict:
     validate_insights(insights)
     
     try:
@@ -2079,16 +2180,13 @@ def calculate_hype_score(insights: Dict, category: str, location: str, threshold
         trend_factor = insights["data"].get("trend", 1.0)
         base_score = popularity * 100 * trend_factor
         
-        # Use real data or a sophisticated model instead of random noise
-        # For example, we can use historical data to simulate the noise
-        # Here, we assume we have a function `get_historical_noise` that returns noise based on historical data
         historical_noise = get_historical_noise(category, location, product_name)
         hype_score = max(0.0, min(100.0, base_score + historical_noise))
         
         social_texts = get_social_data(category)
         if social_texts:
             sentiment_score = sum(
-                TextBlob(scrub_pii(text)).sentiment.polarity + emoji_to_sentiment(text)
+                TextBlob(scrub_pii(text)).sentiment.polarity + emoji_to_sentiment(text) # type: ignore
                 for text in social_texts
             ) / len(social_texts) if social_texts else 0.0
             logger.info(f"Analyzed {len(social_texts)} social posts for sentiment")
@@ -2096,15 +2194,12 @@ def calculate_hype_score(insights: Dict, category: str, location: str, threshold
             sentiment_score = 0.0
             logger.warning("No social data found for sentiment analysis")
         
-        # Apply sentiment adjustment
         hype_score = min(100.0, hype_score * (1 + sentiment_score * 0.2))
         
-        # Enhanced scoring components
         cultural_bonus = sum(1 for k in CULTURAL_KEYWORDS if k in " ".join(social_texts).lower()) * 2
         psychographic = PSYCHO_VEC["enthusiasm"](sentiment_score)
         hype_score = min(100.0, hype_score + cultural_bonus + psychographic)
         
-        # Calculate additional metrics
         scenario = {"price_drop": min(100.0, hype_score * 1.05)}
         cycle_phase = "growth" if hype_score > 50 else "decline"
         confidence_weight = min(1.0, (entities[0]["properties"].get("confidence", 0.5) if entities else 0.5) * 0.8 + 0.2)
@@ -2154,9 +2249,14 @@ def get_historical_noise(category: str, location: str, product_name: str = None)
     This function should be implemented to fetch real historical data.
     For now, it returns a placeholder value.
     """
-    # Placeholder implementation
-    # In a real scenario, this function would fetch historical data and compute the noise
-    return 0.0  # Replace with actual historical noise calculation
+    return 0.0
+
+async def calculate_hype_score_async(insights, category, location, threshold=20.0, product_name: str | None = None):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        None, calculate_hype_score, insights, category or "", location or "", threshold, product_name or ""
+    )
+
 `
 
 
@@ -2175,6 +2275,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.oauth2.service_account import Credentials
 from functools import lru_cache
+import asyncio
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -2217,11 +2318,14 @@ def get_google_sheets_service():
     Returns a cached Google Sheets service object.
     """
     try:
-        creds = Credentials.from_service_account_info(json.loads(GOOGLE_SHEETS_CREDENTIALS))
+        creds_json = GOOGLE_SHEETS_CREDENTIALS
+        if not creds_json:
+            raise ValueError("Google Sheets credentials are not set.")
+        creds = Credentials.from_service_account_info(json.loads(creds_json))
         service = build('sheets', 'v4', credentials=creds, cache_discovery=False)
         logger.info("Google Sheets service initialized successfully")
         return service
-    except Exception as e:
+    except (ValueError, json.JSONDecodeError, HttpError) as e:
         logger.error(f"Failed to initialize Google Sheets service: {str(e)}")
         return None
 
@@ -2236,8 +2340,8 @@ def append_to_google_sheets(prediction, hype_data):
         return {"success": False, "message": "Failed to initialize Google Sheets service"}
 
     values = [[
-        prediction['product'].get('name', 'Unknown'),
-        prediction['product'].get('category', 'Unknown'),
+        prediction.get('product', {}).get('name', 'Unknown'),
+        prediction.get('product', {}).get('category', 'Unknown'),
         prediction.get('uplift', 0.0),
         prediction.get('confidence', 0.0),
         prediction.get('strategy', 'Unknown'),
@@ -2271,12 +2375,13 @@ def get_salesforce_access_token():
         return None
 
     auth_url = f"{SALESFORCE_INSTANCE_URL}/services/oauth2/token"
+    password = (SALESFORCE_PASSWORD or "") + (SALESFORCE_TOKEN or "")
     payload = {
         'grant_type': 'password',
         'client_id': SALESFORCE_CLIENT_ID,
         'client_secret': SALESFORCE_CLIENT_SECRET,
         'username': SALESFORCE_USERNAME,
-        'password': SALESFORCE_PASSWORD + SALESFORCE_TOKEN
+        'password': password
     }
     response = requests.post(auth_url, data=payload, timeout=10)
     response.raise_for_status()
@@ -2298,8 +2403,8 @@ def create_salesforce_record(prediction, hype_data):
         'Content-Type': 'application/json'
     }
     data = {
-        'Name': prediction['product'].get('name', 'Unknown Product'),
-        'Category__c': prediction['product'].get('category', 'Unknown'),
+        'Name': prediction.get('product', {}).get('name', 'Unknown Product'),
+        'Category__c': prediction.get('product', {}).get('category', 'Unknown'),
         'Demand_Uplift__c': prediction.get('uplift', 0.0),
         'Confidence__c': prediction.get('confidence', 0.0),
         'Strategy__c': prediction.get('strategy', 'Unknown'),
@@ -2356,7 +2461,7 @@ def send_integrations(prediction, hype_data):
     Push data to Google Sheets, Salesforce, and queue Discord alerts.
     """
     # Queue a short Discord message for each prediction
-    product_name = prediction['product'].get('name', 'Unknown')
+    product_name = prediction.get('product', {}).get('name', 'Unknown')
     uplift = prediction.get('uplift', 0.0)
     queue_discord_alert(f"📈 {product_name}: predicted uplift {uplift:.2%}")
 
@@ -2369,6 +2474,14 @@ def send_integrations(prediction, hype_data):
     successes = [r["success"] for r in results]
     messages = [r["message"] for r in results]
     return {"success": any(successes), "message": "; ".join(messages)}
+
+# ------------------------------------------------------------------
+# NEW ASYNC WRAPPER
+# ------------------------------------------------------------------
+async def send_integrations_async(prediction, hype_data):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, send_integrations, prediction, hype_data)
+
 `
 
 
@@ -2412,6 +2525,7 @@ redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 client = AsyncOpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=OPENROUTER_API_KEY,
+    http_client=None,
 )
 
 # -----------------------------------------------------------------------------
@@ -2468,7 +2582,10 @@ async def _get_prediction_async(product: Dict, insights: Dict, hype_score: float
             messages=[{"role": "user", "content": prompt}],
             timeout=30,
         )
-        data = json.loads(resp.choices[0].message.content.strip())
+        content = resp.choices[0].message.content
+        if content is None:
+            raise ValueError("LLM response content is None")
+        data = json.loads(content.strip())
 
         # Validate required keys
         required = {"uplift", "strategy", "confidence", "trend"}
@@ -2492,6 +2609,13 @@ async def _get_prediction_async(product: Dict, insights: Dict, hype_score: float
         logger.error("LLM request failed: %s", e)
         log_llm_data_quality("errors", 1.0)
         return {"success": False, "data": None, "message": f"LLM request failed: {e}"}
+
+# -----------------------------------------------------------------------------
+# Public async prediction endpoint
+# -----------------------------------------------------------------------------
+async def get_prediction_async(product: Dict, insights: Dict, hype_score: float) -> Dict:
+    """Public async wrapper for the prediction logic."""
+    return await _get_prediction_async(product, insights, hype_score)
 
 # -----------------------------------------------------------------------------
 # Sync wrapper (100 % backward-compatible)
@@ -2530,6 +2654,13 @@ def get_llm_data_quality() -> Dict:
         "data": metrics,
         "message": "LLM data quality metrics retrieved",
     }
+
+# ------------------------------------------------------------------
+# NEW ASYNC WRAPPER
+# ------------------------------------------------------------------
+async def get_llm_data_quality_async():
+    return get_llm_data_quality()
+
 `
 
 
@@ -2605,7 +2736,7 @@ def predict_trend(product_name: str, tags: str) -> dict:
             forecast = m.predict(future)
             peak_row = forecast.loc[forecast["yhat"].idxmax()]
             peak_date = peak_row["ds"].strftime("%Y-%m-%d")
-            peak_days = (peak_row["ds"] - timestamps[-1]).days
+            peak_days = (peak_row["ds"] - timestamps[-1]).days # type: ignore
             confidence = 0.9  # Prophet gives intervals; simplified here
         else:
             # Holt-Winters (faster for short series)
@@ -2821,7 +2952,7 @@ async def _init_connections() -> None:
     try:
         pg_pool = await asyncpg.create_pool(POSTGRES_URL, min_size=1, max_size=10)
         # ensure table exists
-        async with pg_pool.acquire() as conn:
+        async with pg_pool.acquire() as conn: #type: ignore
             await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS qloo_cache (
@@ -2903,8 +3034,28 @@ async def get_cultural_insights(
 # -------------------- Module-level startup hook -----------------
 # If you have an ASGI lifespan-handler (FastAPI/Starlette),
 # call _init_connections() there instead.
-if __name__ != "__main__":
-    asyncio.create_task(_init_connections())
+async def init_qloo_service():
+    await _init_connections()
+
+# ------------------------------------------------------------------
+# NEW ASYNC WRAPPER
+# ------------------------------------------------------------------
+async def get_cultural_insights_async(location, tags, insight_type="brand"):
+    return await get_cultural_insights(location, tags, insight_type)
+`
+
+
+## File: api\services\__init__.py
+
+``$language
+
+from .data_quality_service import check_data_quality_async
+from .discord_service import send_alert_async
+from .hype_engine import calculate_hype_score_async
+from .integrations_service import send_integrations_async
+from .llm_service import get_prediction_async, get_llm_data_quality_async
+from .qloo_service import get_cultural_insights_async, init_qloo_service
+
 `
 
 
@@ -2914,8 +3065,9 @@ if __name__ != "__main__":
 
 import logging
 from logging.handlers import RotatingFileHandler
+import os
 
-def setup_logging(name: str = __name__, level: int = logging.INFO, log_file: str = None) -> logging.Logger:
+def setup_logging(name: str = __name__, level: int = logging.INFO, log_file: str | None = os.getenv("LOG_FILE")) -> logging.Logger:
     """Configure and return a logger instance.
     Args:
         name (str): Logger name (defaults to module name).
@@ -4425,6 +4577,7 @@ class SocialMediaSpider(scrapy.Spider):
         "ITEM_PIPELINES": {"__main__.SqlitePipeline": 1},
         "DOWNLOADER_MIDDLEWARES": {
             "__main__.Retry429Middleware": 550,
+            "__main__.AdaptiveBackoffMiddleware": 560
         },
         "DOWNLOAD_DELAY": 1.2,
         "CONCURRENT_REQUESTS": 8,
@@ -4572,17 +4725,14 @@ class Retry429Middleware(RetryMiddleware):
             retry_after = int(response.headers.get("Retry-After", 60))
             spider.logger.info(f"429 received, retrying after {retry_after}s")
             time.sleep(retry_after)
-        return super().retry(request, reason, spider)
+        return super()._retry(request, reason, spider)
 
 # Append right after the existing Retry429Middleware class in social_media_spider.py
-class AdaptiveBackoffMiddleware:
+class AdaptiveBackoffMiddleware(RetryMiddleware):
     """429/503 aware with exponential back-off and jitter."""
-    def __init__(self, backoff_base=1.0):
-        self.backoff_base = backoff_base
-
-    @classmethod
-    def from_crawler(cls, crawler):
-        return cls(backoff_base=crawler.settings.getfloat("BACKOFF_BASE", 1.0))
+    def __init__(self, settings, *args, **kwargs):
+        super().__init__(settings, *args, **kwargs)
+        self.backoff_base = self.settings.getfloat("BACKOFF_BASE", 1.0)
 
     def process_response(self, request, response, spider):
         if response.status in {429, 503}:
@@ -4595,13 +4745,6 @@ class AdaptiveBackoffMiddleware:
             return self._retry(request, reason, spider) or response
         return response
 
-    def _retry(self, request, reason, spider):
-        # re-use scrapy’s built-in retry
-        from scrapy.downloadermiddlewares.retry import RetryMiddleware as RM
-        return RM.retry(self, request, reason, spider)
-
-# ---- add to custom_settings ----
-# DOWNLOADER_MIDDLEWARES  += {"__main__.AdaptiveBackoffMiddleware": 560}
 # ------------------------------------------------------------------
 if __name__ == "__main__":
     import argparse
@@ -4629,5 +4772,5 @@ if __name__ == "__main__":
 
 ---
 ## Summary
-Total files processed: 39
-Completed: 2025-08-01 00:56:07
+Total files processed: 40
+Completed: 2025-08-01 04:13:14

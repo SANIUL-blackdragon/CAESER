@@ -1,25 +1,19 @@
-# api/services/llm_service.py
-"""
-LLM service
-- async OpenRouter calls via AsyncOpenAI
-- Redis-based request/response caching
-- 100 % backward-compatible return shape
-"""
 import os
 import json
 import time
-import sqlite3
 import logging
 import asyncio
 import redis.asyncio as redis  # async-first client
+import asyncpg
 
 from openai import AsyncOpenAI
-from typing import Dict
+from typing import Dict, Optional
 
 # -----------------------------------------------------------------------------
 # Config
 # -----------------------------------------------------------------------------
-DB_PATH            = os.getenv("DB_PATH", "./data/caeser.db")
+POSTGRES_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/caeser")
+pg_pool: Optional[asyncpg.Pool] = None
 REDIS_URL          = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 SITE_URL           = "http://localhost:8000"
@@ -37,21 +31,44 @@ client = AsyncOpenAI(
     http_client=None,
 )
 
+async def _init_connections() -> None:
+    global pg_pool
+    try:
+        pg_pool = await asyncpg.create_pool(POSTGRES_URL, min_size=1, max_size=10)
+        async with pg_pool.acquire() as conn:
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS llm_data_quality (
+                    metric TEXT NOT NULL,
+                    value REAL NOT NULL,
+                    timestamp TIMESTAMPTZ DEFAULT NOW()
+                );
+                """
+            )
+        logger.info("PostgreSQL connected and llm_data_quality table ensured.")
+    except Exception as e:
+        logger.error(f"Failed to connect to PostgreSQL or create table: {e}")
+        pg_pool = None
+
 # -----------------------------------------------------------------------------
 # Helpers
 # -----------------------------------------------------------------------------
 def sanitize_input(s: str) -> str:
     return s.strip()
 
-def log_llm_data_quality(metric: str, value: float):
-    """Persist metric in SQLite synchronously (fast)."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        "INSERT INTO llm_data_quality (metric, value, timestamp) VALUES (?, ?, ?)",
-        (metric, value, time.time()),
-    )
-    conn.commit()
-    conn.close()
+async def log_llm_data_quality(metric: str, value: float):
+    """Persist metric in PostgreSQL asynchronously."""
+    if not pg_pool:
+        logger.error("PostgreSQL connection pool not initialized. Cannot log LLM data quality.")
+        return
+    try:
+        async with pg_pool.acquire() as conn:
+            await conn.execute(
+                "INSERT INTO llm_data_quality (metric, value, timestamp) VALUES ($1, $2, NOW())",
+                metric, value
+            )
+    except Exception as e:
+        logger.error(f"Failed to log LLM data quality to PostgreSQL: {e}")
 
 # -----------------------------------------------------------------------------
 # Core async function (upgraded & minimal)
@@ -109,14 +126,14 @@ async def _get_prediction_async(product: Dict, insights: Dict, hype_score: float
         await redis_client.setex(cache_key, 3600, json.dumps({"success": True, "data": data}))
 
         # Log quality metrics
-        log_llm_data_quality("confidence", data.get("confidence", 0.0))
-        log_llm_data_quality("response_time", time.time() - start)
+        await log_llm_data_quality("confidence", data.get("confidence", 0.0))
+        await log_llm_data_quality("response_time", time.time() - start)
 
         return {"success": True, "data": data, "message": "Prediction generated successfully"}
 
     except Exception as e:
         logger.error("LLM request failed: %s", e)
-        log_llm_data_quality("errors", 1.0)
+        await log_llm_data_quality("errors", 1.0)
         return {"success": False, "data": None, "message": f"LLM request failed: {e}"}
 
 # -----------------------------------------------------------------------------
@@ -145,27 +162,34 @@ def get_prediction(product: Dict, insights: Dict, hype_score: float) -> Dict:
 # -----------------------------------------------------------------------------
 # Data-quality endpoint (unchanged)
 # -----------------------------------------------------------------------------
-def get_llm_data_quality() -> Dict:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT metric, AVG(value) as avg_value, COUNT(*) as count
-        FROM llm_data_quality
-        GROUP BY metric
-        """
-    )
-    rows = cursor.fetchall()
-    conn.close()
-    metrics = {row[0]: {"avg_value": row[1], "count": row[2]} for row in rows}
-    return {
-        "success": True,
-        "data": metrics,
-        "message": "LLM data quality metrics retrieved",
-    }
+async def get_llm_data_quality() -> Dict:
+    if not pg_pool:
+        logger.error("PostgreSQL connection pool not initialized. Cannot get LLM data quality.")
+        return {"success": False, "message": "Database not connected"}
+    try:
+        async with pg_pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT metric, AVG(value) as avg_value, COUNT(*) as count
+                FROM llm_data_quality
+                GROUP BY metric
+                """
+            )
+            metrics = {row["metric"]: {"avg_value": row["avg_value"], "count": row["count"]} for row in rows}
+            return {
+                "success": True,
+                "data": metrics,
+                "message": "LLM data quality metrics retrieved",
+            }
+    except Exception as e:
+        logger.error(f"Failed to retrieve LLM data quality from PostgreSQL: {e}")
+        return {"success": False, "message": f"Failed to retrieve LLM data quality: {e}"}
 
 # ------------------------------------------------------------------
 # NEW ASYNC WRAPPER
 # ------------------------------------------------------------------
 async def get_llm_data_quality_async():
-    return get_llm_data_quality()
+    return await get_llm_data_quality()
+
+async def init_llm_service():
+    await _init_connections()

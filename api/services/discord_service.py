@@ -5,14 +5,16 @@ import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime
 import logging
-import sqlite3
 import asyncio
+from typing import Optional
+import asyncpg
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-DB_PATH = os.getenv("DB_PATH", "./data/caeser.db")
+POSTGRES_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/caeser")
+pg_pool: Optional[asyncpg.Pool] = None
 
 # ------------------------------------------------------------------
 def _get_secret(secret_id: str) -> str:
@@ -38,17 +40,20 @@ def _get_secret(secret_id: str) -> str:
         return "" # Return empty string to signify failure
 
 # ------------------------------------------------------------------
-def is_product_marked(product_name, category):
-    # This function remains unchanged
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT COUNT(*) FROM marked_products
-        WHERE product_name = ? AND category = ?
-    """, (product_name, category))
-    count = cursor.fetchone()[0]
-    conn.close()
-    return count > 0
+async def is_product_marked(product_name: str, category: str) -> bool:
+    if not pg_pool:
+        logger.error("PostgreSQL connection pool not initialized. Cannot check if product is marked.")
+        return False
+    try:
+        async with pg_pool.acquire() as conn:
+            count = await conn.fetchval(
+                "SELECT COUNT(*) FROM marked_products WHERE product_name = $1 AND category = $2",
+                product_name, category
+            )
+            return count > 0
+    except Exception as e:
+        logger.error(f"Failed to check if product is marked in PostgreSQL: {e}")
+        return False
 
 # ------------------------------------------------------------------
 # Batched alert queues
@@ -132,11 +137,11 @@ def _flush_email():
 
 # ------------------------------------------------------------------
 # The send_*_alert functions remain unchanged as they only append to lists
-def send_discord_alert(prediction, hype_data):
+async def send_discord_alert(prediction, hype_data):
     product_name = prediction['product'].get('name', 'Unknown Product')
     category = prediction['product'].get('category', 'Unknown')
 
-    if not is_product_marked(product_name, category):
+    if not await is_product_marked(product_name, category):
         logger.info("Product %s not marked – skipping Discord", product_name)
         return {"success": True, "message": "Product not marked, alert skipped"}
 
@@ -153,11 +158,11 @@ def send_discord_alert(prediction, hype_data):
     discord_alerts.append(alert)
     return {"success": True, "message": "Queued for Discord batch"}
 
-def send_slack_alert(prediction, hype_data):
+async def send_slack_alert(prediction, hype_data):
     product_name = prediction['product'].get('name', 'Unknown Product')
     category = prediction['product'].get('category', 'Unknown')
 
-    if not is_product_marked(product_name, category):
+    if not await is_product_marked(product_name, category):
         logger.info("Product %s not marked – skipping Slack", product_name)
         return {"success": True, "message": "Product not marked, alert skipped"}
 
@@ -174,11 +179,11 @@ def send_slack_alert(prediction, hype_data):
     slack_alerts.append(alert)
     return {"success": True, "message": "Queued for Slack batch"}
 
-def send_email_alert(prediction, hype_data):
+async def send_email_alert(prediction, hype_data):
     product_name = prediction['product'].get('name', 'Unknown Product')
     category = prediction['product'].get('category', 'Unknown')
 
-    if not is_product_marked(product_name, category):
+    if not await is_product_marked(product_name, category):
         logger.info("Product %s not marked – skipping Email", product_name)
         return {"success": True, "message": "Product not marked, alert skipped"}
 
@@ -197,10 +202,10 @@ def send_email_alert(prediction, hype_data):
     return {"success": True, "message": "Queued for Email batch"}
 
 # ------------------------------------------------------------------
-def send_alert(prediction, hype_data):
-    send_discord_alert(prediction, hype_data)
-    send_slack_alert(prediction, hype_data)
-    send_email_alert(prediction, hype_data)
+async def send_alert(prediction, hype_data):
+    await send_discord_alert(prediction, hype_data)
+    await send_slack_alert(prediction, hype_data)
+    await send_email_alert(prediction, hype_data)
 
     # Flush all queues
     _flush_discord()
@@ -216,5 +221,22 @@ def send_alert(prediction, hype_data):
 # NEW ASYNC WRAPPER
 # ------------------------------------------------------------------
 async def send_alert_async(prediction, hype_data):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, send_alert, prediction, hype_data)
+    return await send_alert(prediction, hype_data)
+
+async def init_discord_service():
+    global pg_pool
+    try:
+        pg_pool = await asyncpg.create_pool(POSTGRES_URL, min_size=1, max_size=10)
+        async with pg_pool.acquire() as conn:
+            await conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS marked_products (
+                    product_name TEXT PRIMARY KEY,
+                    category TEXT NOT NULL
+                );
+                """
+            )
+        logger.info("PostgreSQL connected and marked_products table ensured.")
+    except Exception as e:
+        logger.error(f"Failed to connect to PostgreSQL or create marked_products table: {e}")
+        pg_pool = None
