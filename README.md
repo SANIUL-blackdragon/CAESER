@@ -12,7 +12,7 @@
 ---
 
 <p align="center">
-  <img src="docs/img/logo.png" alt="CAESER Logo" width="20%">
+  <img src="img/logo.png" alt="CAESER Logo" width="20%">
   <h2>Empowering retailers with predictive cultural intelligence</h2>
 </p>
 
