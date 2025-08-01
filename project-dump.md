@@ -13,8 +13,8 @@ Max File Size: 10MB
 STARTUP_MESSAGE="CÆSER API is live and ready 🚀"
 
 # --- API Keys ---
-QLOO_API_KEY=Ed8qH8iz9GVhxRR2JVkVjVpwcxx1vy_at3TQPxIekkY
-OPENROUTER_API_KEY=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
+QLOO_API_KEY=
+OPENROUTER_API_KEY=
 
 # --- Database (PostgreSQL) ---
 # .env
@@ -4246,7 +4246,7 @@ def downgrade() -> None:
     """)
     op.execute("DROP TABLE social_data;")
     op.execute("ALTER TABLE social_data_old RENAME TO social_data;")
-```
+    ```
 
 
 ## File: migrations\versions\4c0ff554c6e2_initial_migration.py
