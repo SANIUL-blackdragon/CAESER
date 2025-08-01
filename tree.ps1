@@ -2,7 +2,7 @@ function Show-Tree {
     param (
         [string]$Path = ".",
         [string]$Indent = "",
-        [string[]]$Exclude = @('venv', 'node_modules', '.git', '.vscode', 'dist', 'build', '__pycache__', '__MACOSX', '.DS_Store')
+        [string[]]$Exclude = @('venv','.venv', 'node_modules', '.git', '.vscode', 'dist', 'build', '__pycache__', '__MACOSX', '.DS_Store')
     )
 
     # Get all items (directories and files), excluding specified directories

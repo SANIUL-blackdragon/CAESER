@@ -8,6 +8,15 @@ from datetime import datetime
 from typing import Dict, List, Optional, Union
 from fastapi import FastAPI
 
+from pydantic import BaseModel
+
+class PredictRequest(BaseModel):
+    product: str
+    hype_score: float
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+
 # api/main.py (ADD AT TOP)
 import os
 from dotenv import load_dotenv
@@ -454,6 +463,11 @@ async def predict_demand(data: dict) -> dict:
         data.get("insights", {}),
         data.get("hype_score", 0),
     )
+    
+@app.post("/predict/trend")
+async def predict_trend_endpoint(req: PredictRequest):
+    return await predict_trend(req.product, req.hype_score)
+
 
 @app.post("/hype/score")
 async def calculate_hype_score(data: dict) -> dict:

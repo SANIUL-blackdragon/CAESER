@@ -12,7 +12,7 @@ from typing import Dict, Optional
 # -----------------------------------------------------------------------------
 # Config
 # -----------------------------------------------------------------------------
-POSTGRES_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/caeser")
+POSTGRES_URL = os.getenv("DB_URL", "postgresql://postgres:postgres@localhost:5432/caeser")
 pg_pool: Optional[asyncpg.Pool] = None
 REDIS_URL          = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -108,6 +108,7 @@ async def _get_prediction_async(product: Dict, insights: Dict, hype_score: float
             timeout=30,
         )
         content = resp.choices[0].message.content
+        print("RAW LLM CONTENT:\n", content)  # TEMP: debug print
         if content is None:
             raise ValueError("LLM response content is None")
         data = json.loads(content.strip())

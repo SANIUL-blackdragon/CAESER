@@ -13,7 +13,7 @@ try:
 except ImportError:
     HAS_PROPHET = False
 
-POSTGRES_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/caeser")
+POSTGRES_URL = os.getenv("DB_URL", "postgresql://postgres:postgres@localhost:5432/caeser")
 pg_pool: Optional[asyncpg.Pool] = None
 
 logging.basicConfig(level=logging.INFO,

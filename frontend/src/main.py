@@ -93,12 +93,15 @@ def insight_chart(data, itype):
         return None
     ents = data["data"].get("entities", [])
     if itype == "brand":
+        print(f"Entities for demographics insight: {ents}")
         df = pd.DataFrame(
             [
                 {"trait": e["name"], "score": e["properties"].get("popularity", 0.5)}
                 for e in ents
             ]
         )
+        print(f"DataFrame columns: {df.columns.tolist()}, shape: {df.shape}")
+        print(df.head())
         fig = px.bar(df, x="trait", y="score", title="Cultural Affinity")
     elif itype == "demographics":
         df = pd.DataFrame(
@@ -107,6 +110,11 @@ def insight_chart(data, itype):
                 for e in ents
             ]
         )
+        if df.empty or "age" not in df.columns or "affinity" not in df.columns:
+            st.warning("No demographic data available to display.")
+            return df
+        fig = px.bar(df, x="age", y="affinity", title="Demographic Affinity")
+
         fig = px.bar(df, x="age", y="affinity", title="Demographic Affinity")
     elif itype == "heatmap":
         h = data["data"].get("heatmap", {})
@@ -210,13 +218,19 @@ with tab1:
     st.subheader("Product Details")
     pn = st.text_input("Product Name*")
     desc = st.text_area("Description*")
-    tags = st.text_input("Tags")
+    tags_input = st.text_input("Tags (comma-separated)", "")
+    tags = [tag.strip() for tag in tags_input.split(",") if tag.strip()] if tags_input else []
+
+    if tags_input and not re.match(r'^[\w\s,]+$', tags_input):
+        st.error("Tags may only contain letters, numbers, spaces & commas.")
+    # No else block needed here because tags is already processed
+
     loc = st.text_input("Location")
     age = st.text_input("Age")
     gender = st.selectbox("Gender", ["All", "Male", "Female"])
     itype = st.selectbox("Insight", ["brand", "demographics", "heatmap"])
     if st.button("Analyze", use_container_width=True):
-        ok, err = validate_frontend_inputs(pn, desc, tags, loc, age, gender)
+        ok, err = validate_frontend_inputs(pn, desc, tags_input, loc, age, gender)
         if not ok:
             st.error(err)
         elif validate_inputs(pn, desc):

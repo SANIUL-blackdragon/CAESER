@@ -8,7 +8,7 @@ import asyncpg
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-POSTGRES_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/caeser")
+POSTGRES_URL = os.getenv("DB_URL", "postgresql://postgres:postgres@localhost:5432/caeser")
 pg_pool: Optional[asyncpg.Pool] = None
 
 async def _init_connections() -> None:

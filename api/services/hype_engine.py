@@ -19,7 +19,7 @@ EMAIL_REGEX = re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-POSTGRES_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/caeser")
+POSTGRES_URL = os.getenv("DB_URL", "postgresql://postgres:postgres@localhost:5432/caeser")
 pg_pool: Optional[asyncpg.Pool] = None
 
 async def _init_connections() -> None:
@@ -97,7 +97,10 @@ PSYCHO_VEC = {
     "controversy": lambda s: abs(s) * 0.8 if s < -0.3 else 0
 }
 
-def validate_insights(insights: Dict) -> None:
+def validate_insights(insights):
+    if not insights or not isinstance(insights, list):
+        print("Received insights:", insights)  # ← Add this
+        raise ValueError("Invalid insights data")
     if not isinstance(insights, dict) or not insights.get("data"):
         logger.error("Invalid insights data")
         raise ValueError("Invalid insights data")
